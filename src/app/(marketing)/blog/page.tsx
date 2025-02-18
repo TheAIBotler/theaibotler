@@ -1,10 +1,27 @@
-// app/(marketing)/blog/page.tsx
 import { client } from '@/sanity/lib/client'
 import { urlForImage } from '@/sanity/lib/image'
 import Image from 'next/image'
 import Link from 'next/link'
+import { Image as SanityImage } from 'sanity'
 
-async function getPosts() {
+interface Author {
+  name: string
+  image?: SanityImage
+}
+
+interface Post {
+  _id: string
+  title: string
+  slug: {
+    current: string
+  }
+  mainImage?: SanityImage
+  publishedAt: string
+  excerpt?: string
+  author?: Author
+}
+
+async function getPosts(): Promise<Post[]> {
   return await client.fetch(`
     *[_type == "post"] | order(publishedAt desc) {
       _id,
@@ -21,7 +38,7 @@ async function getPosts() {
   `)
 }
 
-export const revalidate = 60 // Revalidate this page every 60 seconds
+export const revalidate = 60
 
 export default async function BlogPage() {
   const posts = await getPosts()
@@ -32,7 +49,7 @@ export default async function BlogPage() {
         <h1 className="text-4xl font-bold mb-8">Blog</h1>
         
         <div className="grid gap-8 md:grid-cols-2">
-          {posts.map((post: any) => (
+          {posts.map((post) => (
             <article 
               key={post._id} 
               className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
@@ -64,7 +81,7 @@ export default async function BlogPage() {
                     <div className="relative h-8 w-8 rounded-full overflow-hidden mr-2">
                       <Image
                         src={urlForImage(post.author.image).url()}
-                        alt={post.author.name}
+                        alt={post.author.name || 'Author'}
                         fill
                         className="object-cover"
                       />

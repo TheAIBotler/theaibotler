@@ -3,8 +3,51 @@ import { client } from '@/sanity/lib/client'
 import { urlForImage } from '@/sanity/lib/image'
 import Image from 'next/image'
 import { PortableText } from '@portabletext/react'
+import { Image as SanityImage, PortableTextBlock } from 'sanity'
+import { Metadata } from 'next'
 
-async function getPost(slug: string) {
+interface Author {
+  name: string
+  image?: SanityImage
+  bio?: PortableTextBlock[]
+}
+
+interface Category {
+  title: string
+}
+
+interface Post {
+  _id: string
+  title: string
+  mainImage?: SanityImage
+  body: PortableTextBlock[]
+  publishedAt: string
+  author?: Author
+  categories?: Category[]
+  excerpt?: string
+}
+
+interface PortableImageProps {
+  value: SanityImage & {
+    alt?: string
+    _type: 'image'
+    asset: {
+      _ref: string
+      _type: 'reference'
+    }
+  }
+}
+
+// Define a type for search parameters
+type SearchParams = { [key: string]: string | string[] | undefined }
+
+// Update Props type with specific types instead of any
+type Props = {
+  params?: Promise<{ slug: string }>
+  searchParams?: Promise<SearchParams>
+}
+
+async function getPost(slug: string): Promise<Post> {
   return await client.fetch(`
     *[_type == "post" && slug.current == $slug][0] {
       _id,
@@ -24,7 +67,13 @@ async function getPost(slug: string) {
   `, { slug })
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata(
+  props: Props
+): Promise<Metadata> {
+  if (!props.params) {
+    throw new Error('Missing params')
+  }
+  const params = await props.params
   const post = await getPost(params.slug)
   
   return {
@@ -35,7 +84,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
 const ptComponents = {
   types: {
-    image: ({ value }: any) => {
+    image: ({ value }: PortableImageProps) => {
       if (!value?.asset?._ref) {
         return null
       }
@@ -53,7 +102,11 @@ const ptComponents = {
   },
 }
 
-export default async function PostPage({ params }: { params: { slug: string } }) {
+export default async function PostPage(props: Props) {
+  if (!props.params) {
+    throw new Error('Missing params')
+  }
+  const params = await props.params
   const post = await getPost(params.slug)
 
   if (!post) {
@@ -72,7 +125,7 @@ export default async function PostPage({ params }: { params: { slug: string } })
                 <div className="relative h-10 w-10 rounded-full overflow-hidden mr-3">
                   <Image
                     src={urlForImage(post.author.image).url()}
-                    alt={post.author.name}
+                    alt={post.author.name || 'Author'}
                     fill
                     className="object-cover"
                   />
@@ -92,7 +145,7 @@ export default async function PostPage({ params }: { params: { slug: string } })
               <>
                 <span>•</span>
                 <div className="flex space-x-2">
-                  {post.categories.map((category: any) => (
+                  {post.categories.map((category) => (
                     <span key={category.title} className="text-blue-600">
                       {category.title}
                     </span>
@@ -115,7 +168,7 @@ export default async function PostPage({ params }: { params: { slug: string } })
         )}
 
         <div className="prose prose-lg max-w-none">
-          <PortableText value={post.body} components={ptComponents} />
+          {post.body && <PortableText value={post.body} components={ptComponents} />}
         </div>
       </article>
     </main>
