@@ -7,6 +7,7 @@ import { Image as SanityImage, PortableTextBlock } from 'sanity'
 import { Metadata } from 'next'
 import { estimateReadingTime } from '@/app/utils/readingTime'
 import { RelatedPosts } from '@/components/RelatedPosts'
+import { ShareButtons } from '@/components/ShareButtons'
 
 interface Author {
   name: string
@@ -153,9 +154,10 @@ export default async function PostPage(props: Props) {
     <main className="min-h-screen p-8">
       <article className="max-w-3xl mx-auto">
         <header className="mb-8">
-          <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
+          <h1 className="text-4xl font-bold mb-6">{post.title}</h1>
           
-          <div className="flex items-center space-x-4 text-gray-600">
+          <div className="flex flex-col space-y-4">
+            {/* Author row */}
             <div className="flex items-center">
               {post.author?.image && (
                 <div className="relative h-10 w-10 rounded-full overflow-hidden mr-3">
@@ -169,30 +171,38 @@ export default async function PostPage(props: Props) {
               )}
               <span className="font-medium">{post.author?.name}</span>
             </div>
-            <span>•</span>
-            <time dateTime={post.publishedAt} className="text-gray-500">
-              {new Date(post.publishedAt).toLocaleDateString('en-US', {
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-              })}
-            </time>
-            <span>•</span>
-            <span className="text-gray-500">
-              {estimateReadingTime(post.body)} min read
-            </span>
-            {post.categories && post.categories.length > 0 && (
-              <>
+
+            {/* Metadata row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3 text-sm text-gray-600">
+                <time dateTime={post.publishedAt}>
+                  {new Date(post.publishedAt).toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </time>
                 <span>•</span>
-                <div className="flex space-x-2">
-                  {post.categories.map((category) => (
-                    <span key={category.title} className="text-blue-600">
-                      {category.title}
-                    </span>
-                  ))}
-                </div>
-              </>
-            )}
+                <span>{estimateReadingTime(post.body)} min read</span>
+                {post.categories && post.categories.length > 0 && (
+                  <>
+                    <span>•</span>
+                    <div className="flex space-x-2">
+                      {post.categories.map((category) => (
+                        <span key={category.title} className="text-blue-600">
+                          {category.title}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <ShareButtons 
+                title={post.title}
+                url={`${process.env.NEXT_PUBLIC_SITE_URL}/blog/${post.slug.current}`}
+              />
+            </div>
           </div>
         </header>
 
@@ -211,6 +221,10 @@ export default async function PostPage(props: Props) {
           {post.body && <PortableText value={post.body} components={ptComponents} />}
         </div>
         <RelatedPosts posts={relatedPosts} />
+        <ShareButtons 
+          title={post.title}
+          url={`${process.env.NEXT_PUBLIC_SITE_URL}/blog/${post.slug.current}`}
+        />
       </article>
     </main>
   )
