@@ -5,6 +5,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Image as SanityImage } from 'sanity'
 import { CategoryFilter } from '../../../components/CategoryFilter'
+import { SearchInput } from '../../../components/SearchInput'
+
 
 interface Author {
   name: string
@@ -38,13 +40,21 @@ async function getCategories(): Promise<Category[]> {
   `)
 }
 
-async function getPosts(categoryId?: string): Promise<Post[]> {
-  const filter = categoryId 
+async function getPosts(categoryId?: string, searchQuery?: string): Promise<Post[]> {
+  const categoryFilter = categoryId 
     ? `&& "${categoryId}" in categories[]._ref`
     : ''
     
+  const searchFilter = searchQuery
+    ? `&& (
+        title match $searchQuery 
+        || excerpt match $searchQuery 
+        || pt::text(content) match $searchQuery
+      )`
+    : ''
+    
   return await client.fetch(`
-    *[_type == "post" ${filter}] | order(publishedAt desc) {
+    *[_type == "post" ${categoryFilter} ${searchFilter}] | order(publishedAt desc) {
       _id,
       title,
       slug,
@@ -60,7 +70,7 @@ async function getPosts(categoryId?: string): Promise<Post[]> {
         image
       }
     }
-  `)
+  `, { searchQuery: `${searchQuery || ''}*` })
 }
 
 export const revalidate = 60
@@ -72,17 +82,23 @@ interface BlogPageProps {
 export default async function BlogPage({ searchParams }: BlogPageProps) {
   const params = await searchParams
   const categoryId = params.category as string | undefined
+  const searchQuery = params.search as string | undefined
   
   const [categories, posts] = await Promise.all([
     getCategories(),
-    getPosts(categoryId)
+    getPosts(categoryId, searchQuery)
   ])
 
   return (
     <main className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold mb-8">Blog</h1>
-        
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-bold">Blog</h1>
+          <div className="w-64"> {/* Reduced width */}
+            <SearchInput />
+          </div>
+        </div>
+
         <CategoryFilter 
           categories={categories}
           activeCategory={categoryId}
