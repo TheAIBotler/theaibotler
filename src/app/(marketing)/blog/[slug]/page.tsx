@@ -5,6 +5,8 @@ import Image from 'next/image'
 import { PortableText } from '@portabletext/react'
 import { Image as SanityImage, PortableTextBlock } from 'sanity'
 import { Metadata } from 'next'
+import { estimateReadingTime } from '@/app/utils/readingTime'
+import { RelatedPosts } from '@/components/RelatedPosts'
 
 interface Author {
   name: string
@@ -25,6 +27,14 @@ interface Post {
   author?: Author
   categories?: Category[]
   excerpt?: string
+  slug: {
+    current: string
+  }
+}
+
+interface PostResponse {
+  post: Post
+  relatedPosts: Post[]
 }
 
 interface PortableImageProps {
@@ -38,33 +48,60 @@ interface PortableImageProps {
   }
 }
 
-// Define a type for search parameters
 type SearchParams = { [key: string]: string | string[] | undefined }
 
-// Update Props type with specific types instead of any
 type Props = {
   params?: Promise<{ slug: string }>
   searchParams?: Promise<SearchParams>
 }
 
-async function getPost(slug: string): Promise<Post> {
-  return await client.fetch(`
+async function getPost(slug: string): Promise<PostResponse> {
+  // First get the category ID of the current post 
+  const catQuery = await client.fetch(`
     *[_type == "post" && slug.current == $slug][0] {
+      "category": categories[0]._ref
+    }
+  `, { slug });
+
+  // Then use that ID to get both the post and related posts
+  return await client.fetch(`{
+    "post": *[_type == "post" && slug.current == $slug][0] {
       _id,
       title,
       mainImage,
       body,
       publishedAt,
+      slug,
+      categories[]->{
+        _id,
+        title
+      },
       author->{
         name,
         image,
         bio
-      },
+      }
+    },
+    "relatedPosts": *[
+      _type == "post" && 
+      slug.current != $slug && 
+      categories[]._ref match $category
+    ] | order(publishedAt desc) [0...3] {
+      _id,
+      title,
+      slug,
+      mainImage,
+      publishedAt,
+      excerpt,
       categories[]->{
+        _id,
         title
       }
     }
-  `, { slug })
+  }`, { 
+    slug,
+    category: catQuery.category 
+  });
 }
 
 export async function generateMetadata(
@@ -74,7 +111,7 @@ export async function generateMetadata(
     throw new Error('Missing params')
   }
   const params = await props.params
-  const post = await getPost(params.slug)
+  const { post } = await getPost(params.slug)
   
   return {
     title: `${post.title} | The AI Botler`,
@@ -107,8 +144,7 @@ export default async function PostPage(props: Props) {
     throw new Error('Missing params')
   }
   const params = await props.params
-  const post = await getPost(params.slug)
-
+  const { post, relatedPosts } = await getPost(params.slug)
   if (!post) {
     return <div>Post not found</div>
   }
@@ -141,6 +177,10 @@ export default async function PostPage(props: Props) {
                 year: 'numeric',
               })}
             </time>
+            <span>•</span>
+            <span className="text-gray-500">
+              {estimateReadingTime(post.body)} min read
+            </span>
             {post.categories && post.categories.length > 0 && (
               <>
                 <span>•</span>
@@ -170,6 +210,7 @@ export default async function PostPage(props: Props) {
         <div className="prose prose-lg max-w-none">
           {post.body && <PortableText value={post.body} components={ptComponents} />}
         </div>
+        <RelatedPosts posts={relatedPosts} />
       </article>
     </main>
   )
