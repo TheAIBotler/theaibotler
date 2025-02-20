@@ -221,10 +221,6 @@ export default async function PostPage(props: Props) {
           {post.body && <PortableText value={post.body} components={ptComponents} />}
         </div>
         <RelatedPosts posts={relatedPosts} />
-        <ShareButtons 
-          title={post.title}
-          url={`${process.env.NEXT_PUBLIC_SITE_URL}/blog/${post.slug.current}`}
-        />
       </article>
     </main>
   )
