@@ -8,6 +8,9 @@ import { Metadata } from 'next'
 import { estimateReadingTime } from '@/app/utils/readingTime'
 import { RelatedPosts } from '@/components/RelatedPosts'
 import { ShareButtons } from '@/components/ShareButtons'
+import CommentThread from '@/components/CommentThread'
+import { supabase } from '@/app/utils/supabase/client'
+import { CommentWithReplies } from '@/app/utils/supabase/types'
 
 interface Author {
   name: string
@@ -140,6 +143,45 @@ const ptComponents = {
   },
 }
 
+async function getComments(postId: string): Promise<CommentWithReplies[]> {
+  const { data: comments, error } = await supabase
+    .from('comments')
+    .select('*')
+    .is('parent_id', null)  // Get top-level comments only
+    .eq('post_id', postId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching comments:', error);
+    return [];
+  }
+
+  // Fetch replies for each comment
+  const commentsWithReplies = await Promise.all(
+    comments.map(async (comment) => {
+      const { data: replies, error: repliesError } = await supabase
+        .from('comments')
+        .select('*')
+        .eq('parent_id', comment.id)
+        .order('created_at', { ascending: true });
+
+      if (repliesError) {
+        console.error('Error fetching replies:', repliesError);
+        return comment;
+      }
+
+      return {
+        ...comment,
+        replies: replies || []
+      };
+    })
+  );
+
+  return commentsWithReplies;
+}
+
+
+
 export default async function PostPage(props: Props) {
   if (!props.params) {
     throw new Error('Missing params')
@@ -149,6 +191,9 @@ export default async function PostPage(props: Props) {
   if (!post) {
     return <div>Post not found</div>
   }
+  
+  // Fetch comments for this post
+  const comments = await getComments(post._id)
 
   return (
     <main className="min-h-screen p-8">
@@ -220,6 +265,16 @@ export default async function PostPage(props: Props) {
         <div className="prose prose-lg max-w-none">
           {post.body && <PortableText value={post.body} components={ptComponents} />}
         </div>
+
+        {/* Add comments section */}
+        <div className="mt-16 border-t pt-8">
+          <h2 className="text-2xl font-bold mb-8">Comments</h2>
+          <CommentThread 
+            comments={comments} 
+            postAuthorImage={post.author?.image ? urlForImage(post.author.image).url() : null}
+          />
+        </div>
+
         <RelatedPosts posts={relatedPosts} />
       </article>
     </main>
