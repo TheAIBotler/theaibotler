@@ -1,4 +1,4 @@
-// types/comments.ts
+// app/utils/supabase/types.ts
 export type CommentWithReplies = {
     id: string;
     post_id: string;
