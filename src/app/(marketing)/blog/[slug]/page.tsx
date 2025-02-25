@@ -150,12 +150,12 @@ async function getComments(postId: string): Promise<CommentWithReplies[]> {
   
   const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: { persistSession: false }
-  })
+  });
   
-  const { data: comments, error } = await supabase
+  // Fetch all comments for this post in a single query
+  const { data: allComments, error } = await supabase
     .from('comments')
     .select('*')
-    .is('parent_id', null)
     .eq('post_id', postId)
     .order('created_at', { ascending: true });
 
@@ -164,28 +164,46 @@ async function getComments(postId: string): Promise<CommentWithReplies[]> {
     return [];
   }
 
-  // Fetch replies for each comment
-  const commentsWithReplies = await Promise.all(
-    comments.map(async (comment) => {
-      const { data: replies, error: repliesError } = await supabase
-        .from('comments')
-        .select('*')
-        .eq('parent_id', comment.id)
-        .order('created_at', { ascending: true });
+  // Organize comments into a nested structure
+  return organizeCommentsIntoThreads(allComments);
+}
 
-      if (repliesError) {
-        console.error('Error fetching replies:', repliesError);
-        return comment;
+// Helper function to organize comments into a nested structure
+function organizeCommentsIntoThreads(flatComments: CommentWithReplies[]): CommentWithReplies[] {
+  // Create a map for quick lookup by ID
+  const commentMap = new Map<string, CommentWithReplies>();
+  
+  // Initialize replies arrays and add to map
+  flatComments.forEach(comment => {
+    commentMap.set(comment.id, {
+      ...comment,
+      replies: []
+    });
+  });
+  
+  // Organize into parent-child relationships
+  const rootComments: CommentWithReplies[] = [];
+  
+  flatComments.forEach(comment => {
+    // Get the comment with initialized replies array from the map
+    const commentWithReplies = commentMap.get(comment.id)!;
+    
+    if (comment.parent_id === null) {
+      // This is a root-level comment
+      rootComments.push(commentWithReplies);
+    } else {
+      // This is a reply, add it to its parent's replies array
+      const parentComment = commentMap.get(comment.parent_id);
+      if (parentComment) {
+        parentComment.replies!.push(commentWithReplies);
+      } else {
+        // If parent not found (rare case), treat as root comment
+        rootComments.push(commentWithReplies);
       }
-
-      return {
-        ...comment,
-        replies: replies || []
-      };
-    })
-  );
-
-  return commentsWithReplies;
+    }
+  });
+  
+  return rootComments;
 }
 
 

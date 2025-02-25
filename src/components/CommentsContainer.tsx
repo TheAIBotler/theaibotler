@@ -23,42 +23,66 @@ export default function CommentsContainer({
   const [isAuthor] = useState(false)
   // We could add author auth check here if implementing that feature
 
-  const refreshComments = async () => {
-    const { data: topLevelComments, error } = await supabase
-      .from('comments')
-      .select('*')
-      .is('parent_id', null)
-      .eq('post_id', postId)
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching comments:', error);
-      return;
-    }
-
-    // Fetch replies for each comment
-    const commentsWithReplies = await Promise.all(
-      topLevelComments.map(async (comment) => {
-        const { data: replies, error: repliesError } = await supabase
-          .from('comments')
-          .select('*')
-          .eq('parent_id', comment.id)
-          .order('created_at', { ascending: true });
-
-        if (repliesError) {
-          console.error('Error fetching replies:', repliesError);
-          return comment;
+  // Function to organize comments into a nested structure
+  const organizeCommentsIntoThreads = (flatComments: CommentWithReplies[]): CommentWithReplies[] => {
+    // Create a map for quick lookup by ID
+    const commentMap = new Map<string, CommentWithReplies>();
+    
+    // Initialize replies arrays and add to map
+    flatComments.forEach(comment => {
+      commentMap.set(comment.id, {
+        ...comment,
+        replies: []
+      });
+    });
+    
+    // Organize into parent-child relationships
+    const rootComments: CommentWithReplies[] = [];
+    
+    flatComments.forEach(comment => {
+      // Get the comment with initialized replies array from the map
+      const commentWithReplies = commentMap.get(comment.id)!;
+      
+      if (comment.parent_id === null) {
+        // This is a root-level comment
+        rootComments.push(commentWithReplies);
+      } else {
+        // This is a reply, add it to its parent's replies array
+        const parentComment = commentMap.get(comment.parent_id);
+        if (parentComment) {
+          parentComment.replies!.push(commentWithReplies);
+        } else {
+          // If parent not found (rare case), treat as root comment
+          rootComments.push(commentWithReplies);
         }
+      }
+    });
+    
+    return rootComments;
+  };
 
-        return {
-          ...comment,
-          replies: replies || []
-        };
-      })
-    );
+  const refreshComments = async () => {
+    try {
+      // Fetch all comments for this post in a single query
+      const { data: allComments, error } = await supabase
+        .from('comments')
+        .select('*')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
 
-    setComments(commentsWithReplies);
-    router.refresh(); // For any server components that need refreshing
+      if (error) {
+        console.error('Error fetching comments:', error);
+        return;
+      }
+
+      // Organize the flat list of comments into a nested structure
+      const organizedComments = organizeCommentsIntoThreads(allComments);
+      
+      setComments(organizedComments);
+      router.refresh(); // For any server components that need refreshing
+    } catch (err) {
+      console.error('Error processing comments:', err);
+    }
   };
 
   return (
