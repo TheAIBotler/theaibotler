@@ -1,4 +1,4 @@
-// lib/supabase/client.ts
+// utils/supabase/client.ts
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -10,8 +10,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Helper function to get session ID
+// Helper function to get session ID (client-side only)
 export const getSessionId = () => {
+  if (typeof window === 'undefined') return '';
+  
   // Check if we have a session ID in localStorage
   let sessionId = localStorage.getItem('comment_session_id');
   

@@ -8,8 +8,8 @@ import { Metadata } from 'next'
 import { estimateReadingTime } from '@/app/utils/readingTime'
 import { RelatedPosts } from '@/components/RelatedPosts'
 import { ShareButtons } from '@/components/ShareButtons'
-import CommentThread from '@/components/CommentThread'
-import { supabase } from '@/app/utils/supabase/client'
+import CommentsContainer from '@/components/CommentsContainer'
+import { createClient } from '@supabase/supabase-js'
 import { CommentWithReplies } from '@/app/utils/supabase/types'
 
 interface Author {
@@ -144,10 +144,18 @@ const ptComponents = {
 }
 
 async function getComments(postId: string): Promise<CommentWithReplies[]> {
+  // Create a server-side client directly
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+  
+  const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: { persistSession: false }
+  })
+  
   const { data: comments, error } = await supabase
     .from('comments')
     .select('*')
-    .is('parent_id', null)  // Get top-level comments only
+    .is('parent_id', null)
     .eq('post_id', postId)
     .order('created_at', { ascending: true });
 
@@ -191,13 +199,15 @@ export default async function PostPage(props: Props) {
   if (!post) {
     return <div>Post not found</div>
   }
-  
-  // Fetch comments for this post
-  const comments = await getComments(post._id)
+
+  // Fetch initial comments server-side
+  const initialComments = await getComments(post._id)
+  const postAuthorImage = post.author?.image ? urlForImage(post.author.image).url() : null
 
   return (
     <main className="min-h-screen p-8">
       <article className="max-w-3xl mx-auto">
+        {/* Keep existing header and content sections */}
         <header className="mb-8">
           <h1 className="text-4xl font-bold mb-6">{post.title}</h1>
           
@@ -219,7 +229,7 @@ export default async function PostPage(props: Props) {
 
             {/* Metadata row */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3 text-sm text-gray-600">
+              <div className="flex items-center space-x-3 text-sm text-gray-600 dark:text-gray-400">
                 <time dateTime={post.publishedAt}>
                   {new Date(post.publishedAt).toLocaleDateString('en-US', {
                     month: 'long',
@@ -234,7 +244,7 @@ export default async function PostPage(props: Props) {
                     <span>•</span>
                     <div className="flex space-x-2">
                       {post.categories.map((category) => (
-                        <span key={category.title} className="text-blue-600">
+                        <span key={category.title} className="text-blue-600 dark:text-blue-400">
                           {category.title}
                         </span>
                       ))}
@@ -262,18 +272,16 @@ export default async function PostPage(props: Props) {
           </div>
         )}
 
-        <div className="prose prose-lg max-w-none">
+        <div className="prose prose-lg max-w-none dark:prose-invert">
           {post.body && <PortableText value={post.body} components={ptComponents} />}
         </div>
 
-        {/* Add comments section */}
-        <div className="mt-16 border-t pt-8">
-          <h2 className="text-2xl font-bold mb-8">Comments</h2>
-          <CommentThread 
-            comments={comments} 
-            postAuthorImage={post.author?.image ? urlForImage(post.author.image).url() : null}
-          />
-        </div>
+        {/* Comments section - using client component */}
+        <CommentsContainer 
+          postId={post._id}
+          postAuthorImage={postAuthorImage}
+          initialComments={initialComments}
+        />
 
         <RelatedPosts posts={relatedPosts} />
       </article>
