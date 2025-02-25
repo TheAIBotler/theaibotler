@@ -1,11 +1,16 @@
 import './globals.css'
 import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
 import Navigation from '@/components/Navigation'
+import Footer from '@/components/Footer'
 
 export const metadata: Metadata = {
   title: 'The AI Botler',
-  description: 'Personal brand focused on AI',
+  description: 'Making AI accessible to everyone through experiments, insights, and practical applications',
 }
+
+const inter = Inter({ subsets: ['latin'] })
+
 
 export default function RootLayout({
   children,
@@ -14,11 +19,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
+      <body className={`${inter.className} bg-white dark:bg-gray-900`}>
         <Navigation />
-        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main>
           {children}
         </main>
+        <Footer />
       </body>
     </html>
   )
