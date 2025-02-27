@@ -1,7 +1,7 @@
 // components/CommentThread.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { type CommentWithReplies } from '@/app/utils/supabase/types'
 import { formatDistanceToNowStrict } from 'date-fns'
 import Image from 'next/image'
@@ -54,6 +54,23 @@ const CommentThread = ({
     // Cleanup
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
+
+  // Helper function to find deep comments
+  const findDeepComments = useCallback((commentList: CommentWithReplies[], currentDepth: number): string[] => {
+    let result: string[] = [];
+    
+    commentList.forEach(comment => {
+      if (currentDepth > 3) {
+        result.push(comment.id);
+      }
+      
+      if (comment.replies && comment.replies.length > 0) {
+        result = [...result, ...findDeepComments(comment.replies, currentDepth + 1)];
+      }
+    });
+    
+    return result;
+  }, []);
   
   // Auto-collapse deep comments on mobile
   useEffect(() => {
@@ -68,24 +85,9 @@ const CommentThread = ({
         return newCollapsed;
       });
     }
-  }, [comments, isMobile]);
+  }, [comments, isMobile, findDeepComments]); 
   
-  // Helper function to find deep comments
-  const findDeepComments = (commentList: CommentWithReplies[], currentDepth: number): string[] => {
-    let result: string[] = [];
-    
-    commentList.forEach(comment => {
-      if (currentDepth > 3) {
-        result.push(comment.id);
-      }
-      
-      if (comment.replies && comment.replies.length > 0) {
-        result = [...result, ...findDeepComments(comment.replies, currentDepth + 1)];
-      }
-    });
-    
-    return result;
-  };
+
   
   // Create a flat map of all comments for easy lookup
   const commentMap = new Map<string, CommentWithReplies>();
