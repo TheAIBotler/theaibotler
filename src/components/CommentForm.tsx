@@ -1,8 +1,9 @@
 // components/CommentForm.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase, getSessionId } from '@/app/utils/supabase/client'
+import { useAuth } from '@/app/context/AuthContext'
 
 interface CommentFormProps {
   postId: string
@@ -25,6 +26,17 @@ export default function CommentForm({
   const [name, setName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { user } = useAuth()
+  
+  // Check if we have a name stored in localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedName = localStorage.getItem('commenter_name');
+      if (storedName) {
+        setName(storedName);
+      }
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -34,6 +46,16 @@ export default function CommentForm({
     try {
       const sessionId = getSessionId()
       
+      // For non-authors, store the name in localStorage
+      if (!isAuthor && name.trim()) {
+        localStorage.setItem('commenter_name', name.trim());
+      }
+      
+      // First, set the session context for RLS policies
+      await supabase.rpc('set_session_context', {
+        session_id: sessionId
+      })
+      
       const { error: supabaseError } = await supabase
         .from('comments')
         .insert([
@@ -42,14 +64,20 @@ export default function CommentForm({
             parent_id: parentId,
             content: content.trim(),
             commenter_name: isAuthor ? null : name.trim() || 'Anonymous',
-            session_id: sessionId,
+            // Set is_author directly instead of relying on trigger
+            is_author: isAuthor,
+            // Only set session_id for non-authenticated users
+            session_id: !user ? sessionId : null,
           }
         ])
 
-      if (supabaseError) throw supabaseError
+      if (supabaseError) {
+        console.error('Error submitting comment:', supabaseError);
+        throw supabaseError
+      }
 
       setContent('')
-      setName('')
+      // Don't clear name - keep it for the next comment
       onCommentAdded()
       if (isReply && onCancelReply) {
         onCancelReply()
