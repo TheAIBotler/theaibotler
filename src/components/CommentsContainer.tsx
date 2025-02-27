@@ -158,30 +158,59 @@ export default function CommentsContainer({
     }
   };
 
-  const handleDeleteComment = async (commentId: string) => {
-    try {
-      // For anonymous users, set session context
-      if (!user) {
-        const sessionId = getSessionId();
-        await supabase.rpc('set_session_context', {
-          session_id: sessionId
-        });
-      }
+  // Updated handleDeleteComment function for CommentsContainer.tsx
+
+const handleDeleteComment = async (commentId: string) => {
+  try {
+    // For anonymous users, set session context
+    if (!user) {
+      const sessionId = getSessionId();
+      await supabase.rpc('set_session_context', {
+        session_id: sessionId
+      });
+    }
+    
+    // Get current comment to check ownership
+    const { data: comment } = await supabase
+      .from('comments')
+      .select('*')
+      .eq('id', commentId)
+      .single();
+    
+    if (!comment) {
+      console.error('Comment not found');
+      return;
+    }
+    
+    // For non-authors, check if comment belongs to current session
+    if (!isAuthor && comment.session_id !== getSessionId()) {
+      console.error('Permission denied: cannot delete this comment');
+      return;
+    }
+    
+    // Check if this is a top-level comment with no replies
+    const { data: childComments, error: childError } = await supabase
+      .from('comments')
+      .select('id')
+      .eq('parent_id', commentId);
       
-      // Get current comment to check ownership
-      const { data: comment } = await supabase
+    if (childError) {
+      console.error('Error checking for child comments:', childError);
+    }
+    
+    // If it's a top-level comment with no replies, hard delete it
+    if (comment.parent_id === null && (!childComments || childComments.length === 0)) {
+      const { error } = await supabase
         .from('comments')
-        .select('*')
-        .eq('id', commentId)
-        .single();
-      
-      // For non-authors, check if comment belongs to current session
-      if (!isAuthor && (!comment || comment.session_id !== getSessionId())) {
-        console.error('Permission denied: cannot delete this comment');
+        .delete()
+        .eq('id', commentId);
+        
+      if (error) {
+        console.error('Error hard-deleting comment:', error);
         return;
       }
-      
-      // Soft delete the comment
+    } else {
+      // Otherwise, soft delete the comment
       const { error } = await supabase
         .from('comments')
         .update({
@@ -197,13 +226,14 @@ export default function CommentsContainer({
         console.error('Error soft-deleting comment:', error);
         return;
       }
-      
-      // Refresh comments after deletion
-      await refreshComments();
-    } catch (err) {
-      console.error('Error deleting comment:', err);
     }
-  };
+    
+    // Refresh comments after deletion
+    await refreshComments();
+  } catch (err) {
+    console.error('Error deleting comment:', err);
+  }
+};
 
   // Don't render anything until session is initialized
   if (!sessionInitialized) {
