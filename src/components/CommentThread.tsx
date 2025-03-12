@@ -7,7 +7,9 @@ import { formatDistanceToNowStrict } from 'date-fns'
 import Image from 'next/image'
 import CommentForm from './CommentForm'
 import CommentEditHistory from './CommentEditHistory'
+import CommentVoting from './CommentVoting' // Import the new voting component
 import { getSessionId } from '@/app/utils/supabase/client'
+import { useAuth } from '@/app/context/AuthContext' // Add this import
 
 interface CommentThreadProps {
   comments: CommentWithReplies[]
@@ -38,6 +40,9 @@ const CommentThread = ({
   
   // Get current session ID for checking own comments
   const currentSessionId = getSessionId();
+  
+  // Get the authenticated user
+  const { user } = useAuth();
   
   // Detect mobile devices
   useEffect(() => {
@@ -86,7 +91,6 @@ const CommentThread = ({
       });
     }
   }, [comments, isMobile, findDeepComments]); 
-  
 
   
   // Create a flat map of all comments for easy lookup
@@ -158,7 +162,13 @@ const CommentThread = ({
     const isCollapsed = collapsedComments.has(comment.id);
     const hasReplies = comment.replies && comment.replies.length > 0;
     const totalReplies = hasReplies ? countTotalReplies(comment) : 0;
-    const isOwnComment = comment.session_id === currentSessionId;
+    
+    // Determine if this is the user's own comment
+    const isOwnComment = 
+      // For anonymous users (compare session ID)
+      (!user && comment.session_id === currentSessionId) ||
+      // For authenticated users with author comments
+      (user && comment.is_author && isAuthor);
     
     // Format time without "about" and with abbreviated units
     let timeAgo = formatDistanceToNowStrict(new Date(comment.created_at), { 
@@ -290,9 +300,16 @@ const CommentThread = ({
               </div>
             )}
             
-            {/* Action buttons */}
+            {/* Action buttons and voting */}
             {!isEditing && !comment.is_deleted && (
-              <div className="mt-1 flex gap-4">
+              <div className="mt-1 flex items-center gap-4">
+                {/* Add the CommentVoting component */}
+                <CommentVoting 
+                  commentId={comment.id}
+                  initialUpvotes={comment.upvotes || 0}
+                  initialDownvotes={comment.downvotes || 0}
+                />
+                
                 <button
                   onClick={() => setReplyingTo(isReplying ? null : comment.id)}
                   className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
@@ -300,9 +317,9 @@ const CommentThread = ({
                   Reply
                 </button>
                 
-                {/* Show edit/delete buttons for authors or comment owners */}
-                {(isAuthor || isOwnComment) && (
-                  <>
+                <>
+                  {/* Only show edit for own comments */}
+                  {isOwnComment && (
                     <button
                       onClick={() => {
                         setEditingComment(comment.id);
@@ -312,14 +329,18 @@ const CommentThread = ({
                     >
                       Edit
                     </button>
+                  )}
+                  
+                  {/* Show delete for own comments or if user is author */}
+                  {(isOwnComment || isAuthor) && (
                     <button
                       onClick={() => onDeleteComment(comment.id)}
                       className="text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
                     >
                       Delete
                     </button>
-                  </>
-                )}
+                  )}
+                </>
               </div>
             )}
           </div>
