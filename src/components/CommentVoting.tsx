@@ -41,7 +41,6 @@ export default function CommentVoting({
         const sessionId = getSessionId()
         
         // First, set the session context for RLS policies
-        // FIXED: Using the correct parameter name 'session_id' instead of 'current_session_id'
         await supabase.rpc('set_session_context', {
           session_id: sessionId
         })
@@ -88,7 +87,6 @@ export default function CommentVoting({
       }, 5000) // 5 second timeout
       
       // First, set the session context for RLS policies
-      // FIXED: Using the correct parameter name 'session_id' instead of 'current_session_id'
       await supabase.rpc('set_session_context', {
         session_id: sessionId
       })
@@ -189,7 +187,7 @@ export default function CommentVoting({
     }
   }
 
-  // Revert optimistic update if the operation fails
+  // Revert optimistic update if the operation fails - removed unused parameter
   const revertOptimisticUpdate = () => {
     // Reset to initial state
     setUpvotes(initialUpvotes)
