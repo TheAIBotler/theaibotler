@@ -24,15 +24,59 @@ export default function CommentsContainer({
   initialComments 
 }: CommentsContainerProps) {
   const router = useRouter()
-  const [comments, setComments] = useState<CommentWithReplies[]>(initialComments)
   const { isAuthor, user } = useAuth()
   const [sessionInitialized, setSessionInitialized] = useState(false)
   const [sortOption, setSortOption] = useState<SortOption>('newest')
   const [isSorting, setIsSorting] = useState(false)
 
+  // Helper function to sort comments by the given sort option
+  const sortComments = useCallback((commentsToSort: CommentWithReplies[], option: SortOption): CommentWithReplies[] => {
+    // Create a deep copy to avoid mutating the original
+    const sortedComments = [...commentsToSort];
+    
+    // Sort root comments based on the selected option
+    switch (option) {
+      case 'newest':
+        sortedComments.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        break;
+      case 'oldest':
+        sortedComments.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        break;
+      case 'popular':
+        sortedComments.sort((a, b) => {
+          // First sort by score
+          const scoreA = (a.upvotes || 0) - (a.downvotes || 0);
+          const scoreB = (b.upvotes || 0) - (b.downvotes || 0);
+          
+          if (scoreB !== scoreA) {
+            return scoreB - scoreA;
+          }
+          
+          // If scores are equal, sort by newest
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+        break;
+    }
+    
+    // Recursively sort replies within each comment
+    // Note: Replies are typically shown chronologically regardless of the main sort
+    sortedComments.forEach(comment => {
+      if (comment.replies && comment.replies.length > 0) {
+        // Always sort replies by oldest first (typical in comment threads)
+        comment.replies.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      }
+    });
+    
+    return sortedComments;
+  }, []);
+  
+  // Apply initial sorting to initialComments - sort by newest first
+  const sortedInitialComments = sortComments(initialComments, 'newest');
+  // Initialize state with sorted comments
+  const [comments, setComments] = useState<CommentWithReplies[]>(sortedInitialComments);
+
   // Function to organize comments into a nested structure
-  // This doesn't need any external dependencies, so it can be defined outside useCallback
-  const organizeCommentsIntoThreads = (flatComments: CommentWithReplies[]): CommentWithReplies[] => {
+  const organizeCommentsIntoThreads = useCallback((flatComments: CommentWithReplies[]): CommentWithReplies[] => {
     // Create a map for quick lookup by ID
     const commentMap = new Map<string, CommentWithReplies>();
     
@@ -67,7 +111,7 @@ export default function CommentsContainer({
     });
     
     return rootComments;
-  };
+  }, []);
 
   // Memoize refreshComments to avoid recreating it on every render
   const refreshComments = useCallback(async () => {
@@ -111,14 +155,17 @@ export default function CommentsContainer({
       // Organize the flat list of comments into a nested structure
       const organizedComments = organizeCommentsIntoThreads(allComments);
       
-      setComments(organizedComments);
+      // Sort the comments according to the current sort option before setting state
+      const sortedComments = sortComments(organizedComments, sortOption);
+      
+      setComments(sortedComments);
       router.refresh(); // For any server components that need refreshing
     } catch (err) {
       console.error('Error processing comments:', err);
     } finally {
       setIsSorting(false);
     }
-  }, [postId, sortOption, user, router]); // Include all dependencies used in the function
+  }, [postId, sortOption, user, router, organizeCommentsIntoThreads, sortComments]); // Include all dependencies used in the function
 
   // Initialize session when component mounts
   useEffect(() => {
