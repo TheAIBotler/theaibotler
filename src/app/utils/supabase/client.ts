@@ -45,7 +45,7 @@ export const setSessionContext = async (): Promise<void> => {
     const sessionId = getSessionId()
     
     try {
-      // console.log('Setting session context with ID:', sessionId);
+      console.log('Setting session context with ID:', sessionId);
       
       const { error } = await supabase.rpc('set_session_context', {
         session_id: sessionId
