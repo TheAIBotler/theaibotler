@@ -24,20 +24,29 @@ export const getSessionId = (): string => {
   
   // Check if running in a browser environment
   if (typeof window !== 'undefined' && window.localStorage) {
-    let sessionId = localStorage.getItem(SESSION_ID_KEY)
-    
-    if (!sessionId) {
-      // Generate a new session ID only if one doesn't exist
-      sessionId = uuidv4()
-      localStorage.setItem(SESSION_ID_KEY, sessionId)
+    try {
+      let sessionId = localStorage.getItem(SESSION_ID_KEY)
+      
+      if (!sessionId) {
+        // Generate a new session ID only if one doesn't exist
+        sessionId = uuidv4()
+        localStorage.setItem(SESSION_ID_KEY, sessionId)
+        console.log('Created new session ID:', sessionId)
+      }
+      
+      return sessionId
+    } catch (error) {
+      // Handle errors with localStorage (e.g., in private browsing mode)
+      console.error('Error accessing localStorage:', error)
+      // Return a temporary session ID
+      return 'temp-' + uuidv4()
     }
-    
-    return sessionId
   }
   
   // Return a placeholder for server-side rendering
   return 'server-side-session'
 }
+
 // Helper to set current session ID in Supabase connection
 export const setSessionContext = async (): Promise<void> => {
   // Check if running in a browser environment
@@ -45,14 +54,35 @@ export const setSessionContext = async (): Promise<void> => {
     const sessionId = getSessionId()
     
     try {
-      console.log('Setting session context with ID:', sessionId);
-      
+      // Try to set session context
       const { error } = await supabase.rpc('set_session_context', {
         session_id: sessionId
       });
 
       if (error) {
         console.error('Error setting session context:', error);
+        
+        // If we get a 406 error or similar, try refreshing the client
+        if (error.code === '406' || error.code === '42501') {
+          console.log('Attempting to recover from session error...');
+          
+          // Force create a new session ID
+          const newSessionId = uuidv4();
+          localStorage.setItem('commenter_session_id', newSessionId);
+          
+          // Try again with the new session ID
+          const secondAttempt = await supabase.rpc('set_session_context', {
+            session_id: newSessionId
+          });
+          
+          if (secondAttempt.error) {
+            console.error('Recovery attempt failed:', secondAttempt.error);
+          } else {
+            console.log('Successfully recovered session');
+            // Force reload the page to ensure all components use the new session
+            window.location.reload();
+          }
+        }
       }
     } catch (error) {
       console.error('Catch block - Error setting session context:', error)
@@ -100,5 +130,29 @@ export const checkIsAuthor = async (): Promise<boolean> => {
   } catch (error) {
     console.error('Error checking author status:', error)
     return false
+  }
+}
+
+// Function to recover from 406 errors
+export const recoverFromSessionError = async (): Promise<boolean> => {
+  try {
+    // Force create a new session ID
+    const newSessionId = uuidv4();
+    localStorage.setItem('commenter_session_id', newSessionId);
+    
+    // Set the new session context
+    const { error } = await supabase.rpc('set_session_context', {
+      session_id: newSessionId
+    });
+    
+    if (error) {
+      console.error('Session recovery failed:', error);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error in session recovery:', error);
+    return false;
   }
 }
