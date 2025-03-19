@@ -106,67 +106,65 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
         
         <div className="grid gap-8 md:grid-cols-2">
           {posts.map((post) => (
-            <article 
-              key={post._id} 
-              className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+            <Link 
+              href={`/blog/${post.slug.current}`}
+              key={post._id}
+              className="block transition-all hover:transform hover:translate-y-[-3px]"
             >
-              {post.mainImage && (
-                <div className="relative aspect-video">
-                  <Image
-                    src={urlForImage(post.mainImage).url()}
-                    alt={post.title}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              )}
-              <div className="p-4">
-                <h2 className="text-xl font-semibold mb-2">
-                  <Link 
-                    href={`/blog/${post.slug.current}`}
-                    className="hover:text-blue-500 transition-colors"
-                  >
-                    {post.title}
-                  </Link>
-                </h2>
-                {post.excerpt && (
-                  <p className="text-gray-600 mb-4 line-clamp-2">{post.excerpt}</p>
-                )}
-                {post.categories && post.categories.length > 0 && (
-                  <div className="flex gap-2 mb-4 flex-wrap">
-                    {post.categories.map(category => (
-                      <span 
-                        key={category._id}
-                        className="px-2 py-1 bg-gray-100 rounded-full text-sm text-gray-600"
-                      >
-                        {category.title}
-                      </span>
-                    ))}
+              <article className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow h-full">
+                {post.mainImage && (
+                  <div className="relative aspect-video">
+                    <Image
+                      src={urlForImage(post.mainImage).url()}
+                      alt={post.title}
+                      fill
+                      className="object-cover"
+                    />
                   </div>
                 )}
-                <div className="flex items-center text-sm text-gray-500">
-                  {post.author?.image && (
-                    <div className="relative h-8 w-8 rounded-full overflow-hidden mr-2">
-                      <Image
-                        src={urlForImage(post.author.image).url()}
-                        alt={post.author.name || 'Author'}
-                        fill
-                        className="object-cover"
-                      />
+                <div className="p-4">
+                  <h2 className="text-xl font-semibold mb-2">
+                    {post.title}
+                  </h2>
+                  {post.excerpt && (
+                    <p className="text-gray-600 mb-4 line-clamp-2">{post.excerpt}</p>
+                  )}
+                  {post.categories && post.categories.length > 0 && (
+                    <div className="flex gap-2 mb-4 flex-wrap">
+                      {post.categories.map(category => (
+                        <span 
+                          key={category._id}
+                          className="px-2 py-1 bg-gray-100 rounded-full text-sm text-gray-600"
+                        >
+                          {category.title}
+                        </span>
+                      ))}
                     </div>
                   )}
-                  <span>{post.author?.name}</span>
-                  <span className="mx-2">•</span>
-                  <time dateTime={post.publishedAt}>
-                    {new Date(post.publishedAt).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
-                  </time>
+                  <div className="flex items-center text-sm text-gray-500">
+                    {post.author?.image && (
+                      <div className="relative h-8 w-8 rounded-full overflow-hidden mr-2">
+                        <Image
+                          src={urlForImage(post.author.image).url()}
+                          alt={post.author.name || 'Author'}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    )}
+                    <span>{post.author?.name}</span>
+                    <span className="mx-2">•</span>
+                    <time dateTime={post.publishedAt}>
+                      {new Date(post.publishedAt).toLocaleDateString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </time>
+                  </div>
                 </div>
-              </div>
-            </article>
+              </article>
+            </Link>
           ))}
         </div>
       </div>
