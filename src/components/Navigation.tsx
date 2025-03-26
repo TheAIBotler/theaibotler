@@ -11,6 +11,7 @@ const Navigation = () => {
     { href: '/', label: 'Home' },
     { href: '/blog', label: 'Blog' },
     { href: '/tools', label: 'Tools' },
+    { href: '/about', label: 'About' },
   ]
   
   return (
