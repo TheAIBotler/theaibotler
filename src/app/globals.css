@@ -32,3 +32,8 @@ html, body {
     height: -webkit-fill-available;
   }
 }
+
+/* Prevent layout shifts from scrollbar appearance - modern approach */
+html {
+  scrollbar-gutter: stable;
+}
