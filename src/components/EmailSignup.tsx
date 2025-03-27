@@ -20,12 +20,12 @@ const EmailSignup = () => {
   return (
     <div className="w-full bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl p-8 mt-16 mb-8 relative overflow-hidden">
       <div className="relative z-10">
-        <h2 className="text-2xl md:text-3xl font-bold mb-2">Join the waitlist</h2>
+        <h2 id="waitlist-heading" className="text-2xl md:text-3xl font-bold mb-2">Join the waitlist</h2>
         <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-lg">
           Get early access to my upcoming AI tools and exclusive updates on new features and releases.
         </p>
         
-        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-lg">
+        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-lg" aria-labelledby="waitlist-heading">
           <input
             type="email"
             placeholder="Your email address"
@@ -34,6 +34,10 @@ const EmailSignup = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={isSubmitting || isSuccess}
+            id="email-signup"
+            aria-required="true"
+            aria-invalid={isError ? "true" : "false"}
+            aria-describedby={message ? "email-form-message" : undefined}
           />
           <button
             type="submit"
@@ -41,6 +45,7 @@ const EmailSignup = () => {
               isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
             } ${isSuccess ? 'bg-green-600 hover:bg-green-700' : ''}`}
             disabled={isSubmitting || isSuccess}
+            aria-busy={isSubmitting ? "true" : "false"}
           >
             {isSubmitting ? (
               'Subscribing...'
@@ -49,7 +54,7 @@ const EmailSignup = () => {
             ) : (
               <>
                 Join waitlist
-                <Send className="ml-2 h-4 w-4" />
+                <Send className="ml-2 h-4 w-4" aria-hidden="true" />
               </>
             )}
           </button>
@@ -57,7 +62,11 @@ const EmailSignup = () => {
         
         {/* Show success or error message */}
         {message && (
-          <p className={`mt-3 text-sm ${isError ? 'text-red-500' : 'text-green-500'}`}>
+          <p 
+            id="email-form-message"
+            className={`mt-3 text-sm ${isError ? 'text-red-500' : 'text-green-500'}`}
+            role={isError ? "alert" : "status"}
+          >
             {message}
           </p>
         )}

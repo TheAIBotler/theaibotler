@@ -53,14 +53,14 @@ export default function ToolsPage() {
             key={index} 
             className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:shadow-md transition-shadow relative"
           >
-            {/* Dynamic status badge - ONLY VISIBLE ON DESKTOP */}
+        {/* Dynamic status badge - ONLY VISIBLE ON DESKTOP */}
             {tool.status === "live" ? (
-              <span className="absolute top-6 right-6 hidden sm:flex px-3 py-1 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 text-xs font-medium rounded-full items-center">
+              <span className="absolute top-6 right-6 hidden sm:flex px-3 py-1 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 text-xs font-medium rounded-full items-center" aria-hidden="true">
                 <ArrowRight className="mr-1 h-3 w-3" />
                 Live
               </span>
             ) : (
-              <span className="absolute top-6 right-6 hidden sm:flex px-3 py-1 bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 text-xs font-medium rounded-full items-center">
+              <span className="absolute top-6 right-6 hidden sm:flex px-3 py-1 bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 text-xs font-medium rounded-full items-center" aria-hidden="true">
                 <Clock className="mr-1 h-3 w-3" />
                 Coming Soon
               </span>
@@ -87,20 +87,20 @@ export default function ToolsPage() {
             </div>
             
             <div className="flex flex-wrap gap-2 mb-6">
-              <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-xs px-3 py-1 rounded-full">
+              <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-xs px-3 py-1 rounded-full" role="status">
                 {tool.category}
               </span>
               
               {/* Show estimated release date for coming soon tools */}
               {tool.status === "coming-soon" && tool.estimatedRelease && (
                 <div className="flex flex-wrap gap-2">
-                  <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 text-xs px-3 py-1 rounded-full flex items-center">
-                    <Clock className="mr-1 h-3 w-3" />
+                  <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 text-xs px-3 py-1 rounded-full flex items-center" role="status">
+                    <Clock className="mr-1 h-3 w-3" aria-hidden="true" />
                     Est. Release: {tool.estimatedRelease}
                   </span>
                   
                   {/* Mobile-only status badge */}
-                  <span className="sm:hidden bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs px-3 py-1 rounded-full flex items-center">
+                  <span className="sm:hidden bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs px-3 py-1 rounded-full flex items-center" aria-hidden="true">
                     <Clock className="mr-1 h-3 w-3" />
                     Coming Soon
                   </span>
@@ -109,7 +109,7 @@ export default function ToolsPage() {
               
               {/* Live badge for mobile */}
               {tool.status === "live" && (
-                <span className="sm:hidden bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 text-xs px-3 py-1 rounded-full flex items-center">
+                <span className="sm:hidden bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 text-xs px-3 py-1 rounded-full flex items-center" aria-hidden="true">
                   <ArrowRight className="mr-1 h-3 w-3" />
                   Live
                 </span>
@@ -121,16 +121,18 @@ export default function ToolsPage() {
                 <Link 
                   href={tool.url}
                   className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors text-sm flex items-center justify-center"
+                  aria-label={`Visit ${tool.title}`}
                 >
-                  <ExternalLink className="mr-2 h-4 w-4" />
+                  <ExternalLink className="mr-2 h-4 w-4" aria-hidden="true" />
                   Visit Tool
                 </Link>
               ) : (
                 <button 
                   onClick={() => openWaitlistModal(tool.title)}
                   className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors text-sm flex items-center justify-center"
+                  aria-label={`Join waitlist for ${tool.title}`}
                 >
-                  <Clock className="mr-2 h-4 w-4" />
+                  <Clock className="mr-2 h-4 w-4" aria-hidden="true" />
                   Join Waitlist
                 </button>
               )}

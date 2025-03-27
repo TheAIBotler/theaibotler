@@ -46,3 +46,22 @@ html {
 .dark .text-shadow-sm {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
+
+/* Improved focus styles for accessibility */
+:focus-visible {
+  outline: 2px solid #3b82f6; /* Blue-500 */
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+/* Skip link focus fix */
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+/* Maintain contrast for interactive elements */
+@media (prefers-color-scheme: dark) {
+  :focus-visible {
+    outline-color: #60a5fa; /* Blue-400 for better contrast on dark */
+  }
+}
