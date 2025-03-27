@@ -8,6 +8,7 @@ import { Metadata } from 'next'
 import { estimateReadingTime } from '@/app/utils/readingTime'
 import { RelatedPosts } from '@/components/RelatedPosts'
 import { ShareButtons } from '@/components/ShareButtons'
+import { CategoryTag } from '@/components/CategoryTag'
 import CommentsContainer from '@/components/CommentsContainer'
 import { createClient } from '@supabase/supabase-js'
 import { CommentWithReplies } from '@/app/utils/supabase/types'
@@ -19,6 +20,7 @@ interface Author {
 }
 
 interface Category {
+  _id: string
   title: string
 }
 
@@ -262,9 +264,11 @@ export default async function PostPage(props: Props) {
                     <span>•</span>
                     <div className="flex space-x-2">
                       {post.categories.map((category) => (
-                        <span key={category.title} className="text-blue-600 dark:text-blue-400">
-                          {category.title}
-                        </span>
+                        <CategoryTag 
+                          key={category.title} 
+                          id={category._id}
+                          title={category.title} 
+                        />
                       ))}
                     </div>
                   </>
