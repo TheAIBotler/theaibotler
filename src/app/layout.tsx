@@ -90,6 +90,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full">
+      <head>
+        <script src="/sw-register.js" defer />
+      </head>
       <body className={`${inter.className} bg-white dark:bg-gray-900 flex flex-col h-full`}>
         <Providers>
           {/* Skip to content link for accessibility */}
