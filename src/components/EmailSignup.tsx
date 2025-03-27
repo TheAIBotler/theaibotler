@@ -1,66 +1,21 @@
 'use client'
 
-import { useState, FormEvent } from 'react';
 import { Send } from 'lucide-react';
+import { useSubscriptionForm } from '@/hooks/useSubscriptionForm';
 
 const EmailSignup = () => {
-  // Add state management
-  const [email, setEmail] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [message, setMessage] = useState('');
-  const [isError, setIsError] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-
-  // Handle form submission
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
-    // Validate email (simple validation)
-    if (!email || !email.includes('@')) {
-      setIsError(true);
-      setMessage('Please enter a valid email address');
-      return;
-    }
-    
-    // Start loading state
-    setIsSubmitting(true);
-    setMessage('');
-    setIsError(false);
-    
-    try {
-      // Submit to our API route that connects to ConvertKit
-      const response = await fetch('/api/subscribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Something went wrong. Please try again.');
-      }
-      
-      // Success state
-      setIsSuccess(true);
-      setMessage('Thanks for subscribing! Check your email for confirmation.');
-      setEmail(''); // Clear input
-      
-    } catch (error: unknown) {
-      // Error state
-      setIsError(true);
-      // Handle error safely with type checking
-      if (error instanceof Error) {
-        setMessage(error.message);
-      } else {
-        setMessage('Failed to subscribe. Please try again.');
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  // Use the custom subscription form hook
+  const {
+    email,
+    setEmail,
+    isSubmitting,
+    isError,
+    isSuccess,
+    message,
+    handleSubmit
+  } = useSubscriptionForm({
+    successMessage: 'Thanks for subscribing! Check your email for confirmation.'
+  });
 
   return (
     <div className="w-full bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl p-8 mt-16 mb-8 relative overflow-hidden">
