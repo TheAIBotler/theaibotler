@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, FormEvent } from 'react';
+import { SubscriptionFormData, SubscriptionResponse } from '@/types';
 
 interface UseSubscriptionFormProps {
   onSuccess?: () => void;
@@ -25,6 +26,19 @@ export function useSubscriptionForm({
     setIsSuccess(false);
   };
 
+  // Helper function to submit subscription data
+  async function submitSubscription(email: string): Promise<SubscriptionResponse> {
+    const response = await fetch('/api/subscribe', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email } as SubscriptionFormData),
+    });
+    
+    return await response.json() as SubscriptionResponse;
+  }
+
   // Handle form submission
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -41,18 +55,9 @@ export function useSubscriptionForm({
     setIsError(false);
     
     try {
-      // Submit to our API route that connects to ConvertKit
-      const response = await fetch('/api/subscribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
+      const data = await submitSubscription(email);
       
-      const data = await response.json();
-      
-      if (!response.ok) {
+      if (data.error) {
         throw new Error(data.error || 'Something went wrong. Please try again.');
       }
       

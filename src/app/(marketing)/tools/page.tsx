@@ -5,17 +5,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, ExternalLink, Clock } from 'lucide-react';
 import WaitlistModal from '@/components/WaitlistModal';
-
-// Define a proper interface for the tool
-interface Tool {
-  title: string;
-  description: string;
-  status: 'live' | 'coming-soon';
-  features: string[];
-  category: string;
-  url?: string; // Make URL optional
-  estimatedRelease?: string; // For coming soon tools
-}
+import { Tool } from '@/types';
 
 export default function ToolsPage() {
   // State for modal control
