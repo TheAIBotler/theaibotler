@@ -37,3 +37,12 @@ html, body {
 html {
   scrollbar-gutter: stable;
 }
+
+/* Custom utilities */
+.text-shadow-sm {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.dark .text-shadow-sm {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}

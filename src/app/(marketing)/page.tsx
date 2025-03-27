@@ -1,19 +1,16 @@
 // src/app/(marketing)/page.tsx
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
-import ParticleAnimation from '@/components/ParticleAnimation';
 import EmailSignup from '@/components/EmailSignup';
 
 export default function HomePage() {
   return (
-    <div className="max-w-4xl mx-auto px-8 py-16">
+    <div className="max-w-4xl mx-auto px-8 py-16 relative">
       {/* Hero section with minimalist design */}
       <div className="space-y-8 text-center relative">
-        {/* Floating particles background */}
-        <ParticleAnimation />
         
         {/* Simple, bold headline - UPDATED MISSION STATEMENT */}
-        <h1 className="text-5xl md:text-7xl font-bold tracking-tight">
+        <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-shadow-sm">
           Leveraging AI to solve <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">real world</span> problems.
         </h1>
         
