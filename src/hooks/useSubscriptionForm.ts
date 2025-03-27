@@ -1,12 +1,11 @@
 'use client'
 
 import { useState, FormEvent } from 'react';
-import { SubscriptionFormData, SubscriptionResponse } from '@/types';
-
-interface UseSubscriptionFormProps {
-  onSuccess?: () => void;
-  successMessage?: string;
-}
+import { 
+  SubscriptionFormData, 
+  SubscriptionResponse,
+  UseSubscriptionFormProps 
+} from '@/types';
 
 export function useSubscriptionForm({ 
   onSuccess, 
