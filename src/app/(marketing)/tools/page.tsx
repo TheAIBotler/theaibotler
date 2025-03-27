@@ -22,6 +22,7 @@ export default function ToolsPage() {
   const closeWaitlistModal = () => {
     setIsModalOpen(false);
   };
+  
   const tools: Tool[] = [
     {
       title: "EquationOracle",
@@ -40,8 +41,37 @@ export default function ToolsPage() {
     }
   ];
 
+  // Generate structured data for tools
+  const toolsSchemaData = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    'itemListElement': tools.map((tool, index) => ({
+      '@type': 'ListItem',
+      'position': index + 1,
+      'item': {
+        '@type': 'SoftwareApplication',
+        'name': tool.title,
+        'description': tool.description,
+        'applicationCategory': 'WebApplication',
+        'operatingSystem': 'All',
+        'offers': {
+          '@type': 'Offer',
+          'price': '0',
+          'priceCurrency': 'USD',
+          'availability': tool.status === 'live' ? 'https://schema.org/InStock' : 'https://schema.org/PreOrder'
+        }
+      }
+    }))
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-8">
+      {/* Add JSON-LD structured data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(toolsSchemaData) }}
+      />
+      
       <h1 className="text-4xl font-bold">AI Tools</h1>
       <p className="mt-4 mb-8 text-gray-600 dark:text-gray-300">
         Powerful AI tools designed to solve real problems — no coding required.
