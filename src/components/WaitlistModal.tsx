@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, FormEvent, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import { useSubscriptionForm } from '@/hooks/useSubscriptionForm';
 import { Send, X } from 'lucide-react';
 
 interface WaitlistModalProps {
@@ -10,12 +11,25 @@ interface WaitlistModalProps {
 }
 
 const WaitlistModal = ({ isOpen, onClose, toolName }: WaitlistModalProps) => {
-  // Form state
-  const [email, setEmail] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [message, setMessage] = useState('');
-  const [isError, setIsError] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+  // Use the custom hook for form management
+  const {
+    email,
+    setEmail,
+    isSubmitting,
+    isError,
+    isSuccess,
+    message,
+    handleSubmit,
+    resetForm
+  } = useSubscriptionForm({
+    successMessage: 'Thanks for joining the waitlist! Check your email for confirmation.',
+    onSuccess: () => {
+      // Close modal after success (with delay for user to see confirmation)
+      setTimeout(() => {
+        onClose();
+      }, 3000);
+    }
+  });
   
   // Modal interaction
   const modalRef = useRef<HTMLDivElement>(null);
@@ -60,64 +74,11 @@ const WaitlistModal = ({ isOpen, onClose, toolName }: WaitlistModalProps) => {
   // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setEmail('');
-      setMessage('');
-      setIsError(false);
-      setIsSuccess(false);
+      resetForm();
     }
-  }, [isOpen]);
+  }, [isOpen, resetForm]);
 
-  // Handle form submission
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
-    // Validate email
-    if (!email || !email.includes('@')) {
-      setIsError(true);
-      setMessage('Please enter a valid email address');
-      return;
-    }
-    
-    setIsSubmitting(true);
-    setMessage('');
-    setIsError(false);
-    
-    try {
-      const response = await fetch('/api/subscribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Something went wrong. Please try again.');
-      }
-      
-      // Success state
-      setIsSuccess(true);
-      setMessage('Thanks for joining the waitlist! Check your email for confirmation.');
-      setEmail('');
-      
-      // Close modal after success (with delay for user to see confirmation)
-      setTimeout(() => {
-        onClose();
-      }, 3000);
-      
-    } catch (error: unknown) {
-      setIsError(true);
-      if (error instanceof Error) {
-        setMessage(error.message);
-      } else {
-        setMessage('Failed to join waitlist. Please try again.');
-      }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  // The handleSubmit function now comes from the custom hook
 
   if (!isOpen) return null;
 
