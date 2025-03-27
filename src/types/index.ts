@@ -1,6 +1,35 @@
 // Central types file for the application
 
 /**
+ * Particle Animation types
+ */
+export interface Particle {
+  size: number;
+  top: number;
+  left: number;
+  opacity: number;
+  duration: number;
+  delay: number;
+  initialScale: number;
+  animationIndex: number;
+  colorClass: string;
+}
+
+export interface ParticleAnimationProps {
+  fullPage?: boolean;
+  particleCount?: number;
+  particleColor?: string;
+}
+
+/**
+ * Form hook types
+ */
+export interface UseSubscriptionFormProps {
+  onSuccess?: () => void;
+  successMessage?: string;
+}
+
+/**
  * Tool entity type definition
  */
 export interface Tool {

@@ -1,25 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-
-// Define particle type for better type safety
-interface Particle {
-  size: number;
-  top: number;
-  left: number;
-  opacity: number;
-  duration: number;
-  delay: number;
-  initialScale: number;
-  animationIndex: number;
-  colorClass: string;
-}
-
-interface ParticleAnimationProps {
-  fullPage?: boolean;
-  particleCount?: number;
-  particleColor?: string;
-}
+import { Particle, ParticleAnimationProps } from '@/types';
 
 // Enhanced client-only component that avoids hydration mismatches
 const ParticleAnimation = ({ 
