@@ -45,14 +45,14 @@ export default function ToolsPage() {
             key={index} 
             className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:shadow-md transition-shadow relative"
           >
-            {/* Dynamic status badge */}
+            {/* Dynamic status badge - ONLY VISIBLE ON DESKTOP */}
             {tool.status === "live" ? (
-              <span className="absolute top-6 right-6 px-3 py-1 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 text-xs font-medium rounded-full flex items-center">
+              <span className="absolute top-6 right-6 hidden sm:flex px-3 py-1 bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-200 text-xs font-medium rounded-full items-center">
                 <ArrowRight className="mr-1 h-3 w-3" />
                 Live
               </span>
             ) : (
-              <span className="absolute top-6 right-6 px-3 py-1 bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 text-xs font-medium rounded-full flex items-center">
+              <span className="absolute top-6 right-6 hidden sm:flex px-3 py-1 bg-yellow-100 dark:bg-yellow-900/40 text-yellow-800 dark:text-yellow-200 text-xs font-medium rounded-full items-center">
                 <Clock className="mr-1 h-3 w-3" />
                 Coming Soon
               </span>
@@ -85,9 +85,25 @@ export default function ToolsPage() {
               
               {/* Show estimated release date for coming soon tools */}
               {tool.status === "coming-soon" && tool.estimatedRelease && (
-                <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 text-xs px-3 py-1 rounded-full flex items-center">
-                  <Clock className="mr-1 h-3 w-3" />
-                  Est. Release: {tool.estimatedRelease}
+                <div className="flex flex-wrap gap-2">
+                  <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 text-xs px-3 py-1 rounded-full flex items-center">
+                    <Clock className="mr-1 h-3 w-3" />
+                    Est. Release: {tool.estimatedRelease}
+                  </span>
+                  
+                  {/* Mobile-only status badge */}
+                  <span className="sm:hidden bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs px-3 py-1 rounded-full flex items-center">
+                    <Clock className="mr-1 h-3 w-3" />
+                    Coming Soon
+                  </span>
+                </div>
+              )}
+              
+              {/* Live badge for mobile */}
+              {tool.status === "live" && (
+                <span className="sm:hidden bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 text-xs px-3 py-1 rounded-full flex items-center">
+                  <ArrowRight className="mr-1 h-3 w-3" />
+                  Live
                 </span>
               )}
             </div>
