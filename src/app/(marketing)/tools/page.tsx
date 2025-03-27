@@ -16,43 +16,19 @@ interface Tool {
 export default function ToolsPage() {
   const tools: Tool[] = [
     {
-      title: "AI Text Simplifier",
-      description: "Transform complex documents and academic papers into easy-to-understand summaries. Perfect for students, researchers, and professionals who need to quickly understand dense material.",
+      title: "EquationOracle",
+      description: "Harness the power of AI to generate custom mathematics questions across any subject area. An intelligent tool that creates personalized practice materials, tests, and learning resources tailored to specific learning objectives.",
       status: "coming-soon",
       estimatedRelease: "Q2 2025",
       features: [
-        "Simplify academic papers and research",
-        "Adjust the simplification level for your needs",
-        "Maintain accuracy while improving readability",
-        "Export in multiple formats"
+        "Adaptive difficulty scaling from elementary concepts to advanced university mathematics",
+        "Contextual problem generation based on real-world scenarios and applications",
+        "Intelligent solution pathways with multiple solving methods",
+        "Personalized question creation based on learning gaps and strengths",
+        "Curriculum alignment for educational standards worldwide",
+        "Export in multiple formats including PDF, Word, and interactive web pages"
       ],
-      category: "Productivity"
-    },
-    {
-      title: "Intelligent Email Assistant",
-      description: "Generate professional responses and manage your inbox with AI-powered suggestions. Save time and improve your communication without writing every email from scratch.",
-      status: "coming-soon",
-      estimatedRelease: "Q3 2025",
-      features: [
-        "Smart reply suggestions based on email context",
-        "Professional tone adjustment",
-        "Meeting scheduling assistant",
-        "Follow-up reminders"
-      ],
-      category: "Communication"
-    },
-    {
-      title: "Visual Content Creator",
-      description: "Create professional graphics and social media visuals with simple text prompts. No design skills needed - just describe what you want and get beautiful visuals.",
-      status: "coming-soon",
-      estimatedRelease: "Q4 2025",
-      features: [
-        "Generate social media graphics",
-        "Create custom illustrations",
-        "Design presentation slides",
-        "Export in multiple formats and sizes"
-      ],
-      category: "Design",
+      category: "Education"
     }
   ];
 
