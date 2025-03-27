@@ -1,6 +1,10 @@
 // app/(marketing)/tools/page.tsx
+'use client'
+
+import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, ExternalLink, Clock } from 'lucide-react';
+import WaitlistModal from '@/components/WaitlistModal';
 
 // Define a proper interface for the tool
 interface Tool {
@@ -14,6 +18,20 @@ interface Tool {
 }
 
 export default function ToolsPage() {
+  // State for modal control
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTool, setSelectedTool] = useState<string | undefined>();
+  
+  // Function to open modal with selected tool
+  const openWaitlistModal = (toolName: string) => {
+    setSelectedTool(toolName);
+    setIsModalOpen(true);
+  };
+
+  // Function to close modal
+  const closeWaitlistModal = () => {
+    setIsModalOpen(false);
+  };
   const tools: Tool[] = [
     {
       title: "EquationOracle",
@@ -119,6 +137,7 @@ export default function ToolsPage() {
                 </Link>
               ) : (
                 <button 
+                  onClick={() => openWaitlistModal(tool.title)}
                   className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors text-sm flex items-center justify-center"
                 >
                   <Clock className="mr-2 h-4 w-4" />
@@ -129,6 +148,13 @@ export default function ToolsPage() {
           </div>
         ))}
       </div>
+      
+      {/* Waitlist Modal */}
+      <WaitlistModal 
+        isOpen={isModalOpen} 
+        onClose={closeWaitlistModal} 
+        toolName={selectedTool} 
+      />
     </div>
   );
 }
