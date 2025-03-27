@@ -17,9 +17,9 @@ const Navigation = () => {
   return (
     <header className="w-full">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <nav className="flex items-center justify-between h-16">
+        <nav className="flex items-center justify-between h-16" aria-label="Main navigation">
           <div className="flex-shrink-0">
-            <Link href="/" className="text-xl font-bold text-white hover:text-blue-400 transition-colors">
+            <Link href="/" className="text-xl font-bold text-white hover:text-blue-400 transition-colors" aria-label="The AI Botler - Home">
               The AI Botler
             </Link>
           </div>
@@ -37,6 +37,7 @@ const Navigation = () => {
                       ? 'bg-white text-black'
                       : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                   }`}
+                  aria-current={isActive ? "page" : undefined}
                 >
                   {item.label}
                 </Link>

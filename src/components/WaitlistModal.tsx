@@ -29,6 +29,16 @@ const WaitlistModal = ({ isOpen, onClose, toolName }: WaitlistModalProps) => {
   // Modal interaction
   const modalRef = useRef<HTMLDivElement>(null);
   
+  // Trap focus within modal when open
+  const initialFocusRef = useRef<HTMLInputElement>(null);
+  
+  // Focus the email input when modal opens
+  useEffect(() => {
+    if (isOpen && initialFocusRef.current) {
+      initialFocusRef.current.focus();
+    }
+  }, [isOpen]);
+  
   // Handle clicks outside the modal to close
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -78,7 +88,12 @@ const WaitlistModal = ({ isOpen, onClose, toolName }: WaitlistModalProps) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
       <div 
         ref={modalRef}
         className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 relative overflow-hidden"
@@ -101,9 +116,9 @@ const WaitlistModal = ({ isOpen, onClose, toolName }: WaitlistModalProps) => {
         <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-28 h-28 rounded-full bg-purple-100 dark:bg-purple-800/20 opacity-50"></div>
         
         <div className="relative z-10">
-          <h2 className="text-2xl font-bold mb-2">Join the waitlist</h2>
+          <h2 id="modal-title" className="text-2xl font-bold mb-2">Join the waitlist</h2>
           
-          <p className="text-gray-600 dark:text-gray-300 mb-6">
+          <p className="text-gray-600 dark:text-gray-300 mb-6" id="modal-description">
             {toolName 
               ? `Get early access to ${toolName} and be the first to know when it's ready.` 
               : 'Get early access to our upcoming AI tools and exclusive updates on new features.'}
@@ -118,6 +133,10 @@ const WaitlistModal = ({ isOpen, onClose, toolName }: WaitlistModalProps) => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isSubmitting || isSuccess}
+              ref={initialFocusRef}
+              aria-required="true"
+              aria-invalid={isError ? "true" : "false"}
+              aria-describedby={message ? "waitlist-form-message" : undefined}
             />
             
             <button
@@ -126,6 +145,7 @@ const WaitlistModal = ({ isOpen, onClose, toolName }: WaitlistModalProps) => {
                 isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
               } ${isSuccess ? 'bg-green-600 hover:bg-green-700' : ''}`}
               disabled={isSubmitting || isSuccess}
+              aria-busy={isSubmitting ? "true" : "false"}
             >
               {isSubmitting ? (
                 'Joining...'
@@ -134,7 +154,7 @@ const WaitlistModal = ({ isOpen, onClose, toolName }: WaitlistModalProps) => {
               ) : (
                 <>
                   Join waitlist
-                  <Send className="ml-2 h-4 w-4" />
+                  <Send className="ml-2 h-4 w-4" aria-hidden="true" />
                 </>
               )}
             </button>
@@ -142,7 +162,11 @@ const WaitlistModal = ({ isOpen, onClose, toolName }: WaitlistModalProps) => {
           
           {/* Message display */}
           {message && (
-            <p className={`mt-3 text-sm ${isError ? 'text-red-500' : 'text-green-500'}`}>
+            <p 
+              id="waitlist-form-message"
+              className={`mt-3 text-sm ${isError ? 'text-red-500' : 'text-green-500'}`}
+              role={isError ? "alert" : "status"}
+            >
               {message}
             </p>
           )}

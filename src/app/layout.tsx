@@ -21,12 +21,20 @@ export default function RootLayout({
     <html lang="en" className="h-full">
       <body className={`${inter.className} bg-white dark:bg-gray-900 flex flex-col h-full`}>
         <Providers>
+          {/* Skip to content link for accessibility */}
+          <a 
+            href="#main-content" 
+            className="skip-link absolute z-50 bg-blue-600 text-white p-3 rounded transform -translate-y-full focus:translate-y-0 transition-transform"
+          >
+            Skip to content
+          </a>
+          
           <Navigation />
           {/* Site-wide background animation */}
           <ParticleAnimation fullPage={true} particleCount={30} particleColor="mixed" />
-          <div className="flex-1">
+          <main id="main-content" className="flex-1">
             {children}
-          </div>
+          </main>
           <Footer />
         </Providers>
       </body>
