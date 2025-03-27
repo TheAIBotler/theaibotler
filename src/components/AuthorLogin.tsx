@@ -112,9 +112,9 @@ export default function AuthorLogin() {
         <>
           {/* Desktop dropdown - centered */}
           <div 
-            className="hidden md:block absolute left-1/2 -translate-x-1/2 top-8 mt-2 p-4 w-64 bg-white rounded-lg shadow-lg z-50"
+            className="hidden md:block absolute top-full left-1/2 transform -translate-x-1/2 mt-2 p-4 w-64 max-w-[calc(100vw-2rem)] bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden z-20"
           >
-            <h3 className="text-sm font-medium text-gray-900 mb-3">Author Login</h3>
+            <h3 className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-3">Author Login</h3>
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
                 <input
@@ -124,7 +124,7 @@ export default function AuthorLogin() {
                   onChange={handleChange}
                   placeholder="Email"
                   required
-                  className="w-full px-3 py-2 text-sm border rounded-lg bg-gray-50 border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-500"
+                  className="w-full px-3 py-2 text-sm border rounded-lg bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                 />
               </div>
               <div>
@@ -135,7 +135,7 @@ export default function AuthorLogin() {
                   onChange={handleChange}
                   placeholder="Password"
                   required
-                  className="w-full px-3 py-2 text-sm border rounded-lg bg-gray-50 border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-500"
+                  className="w-full px-3 py-2 text-sm border rounded-lg bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                 />
               </div>
               {error && (
@@ -144,7 +144,7 @@ export default function AuthorLogin() {
               <button
                 type="submit"
                 disabled={isLoggingIn}
-                className="w-full py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="w-full py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {isLoggingIn ? 'Logging in...' : 'Login'}
               </button>
@@ -161,11 +161,11 @@ export default function AuthorLogin() {
             }}
           >
             <div 
-              className="bg-white w-full max-w-xs rounded-2xl shadow-xl transform transition-transform duration-300 translate-y-0 scale-100 opacity-100"
+              className="bg-white dark:bg-gray-800 w-full max-w-xs rounded-lg shadow-xl transform transition-transform duration-300 translate-y-0 scale-100 opacity-100 border border-gray-200 dark:border-gray-700 overflow-hidden"
               style={{ maxHeight: '90vh' }}
             >
-              <div className="p-4 border-b border-gray-100">
-                <h3 className="text-lg font-medium text-gray-900">Author Login</h3>
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Author Login</h3>
               </div>
               <div className="p-4">
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -177,7 +177,7 @@ export default function AuthorLogin() {
                       onChange={handleChange}
                       placeholder="Email"
                       required
-                      className="w-full px-4 py-3 text-base border rounded-xl bg-gray-50 border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-500"
+                      className="w-full px-4 py-3 text-base border rounded-lg bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                     />
                   </div>
                   <div>
@@ -188,7 +188,7 @@ export default function AuthorLogin() {
                       onChange={handleChange}
                       placeholder="Password"
                       required
-                      className="w-full px-4 py-3 text-base border rounded-xl bg-gray-50 border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 placeholder-gray-500"
+                      className="w-full px-4 py-3 text-base border rounded-lg bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-800 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
                     />
                   </div>
                   {error && (
@@ -197,7 +197,7 @@ export default function AuthorLogin() {
                   <button
                     type="submit"
                     disabled={isLoggingIn}
-                    className="w-full py-3 text-base font-medium bg-blue-600 text-white rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="w-full py-3 text-base font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {isLoggingIn ? 'Logging in...' : 'Login'}
                   </button>
