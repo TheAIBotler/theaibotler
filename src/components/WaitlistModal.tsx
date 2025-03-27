@@ -3,12 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useSubscriptionForm } from '@/hooks/useSubscriptionForm';
 import { Send, X } from 'lucide-react';
-
-interface WaitlistModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  toolName?: string;
-}
+import { WaitlistModalProps } from '@/types';
 
 const WaitlistModal = ({ isOpen, onClose, toolName }: WaitlistModalProps) => {
   // Use the custom hook for form management

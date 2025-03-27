@@ -1,5 +1,6 @@
 // app/api/subscribe/route.ts
 import { NextResponse } from 'next/server';
+import { SubscriptionFormData, SubscriptionResponse } from '@/types';
 
 // You'll set these in your .env.local file
 const API_KEY = process.env.CONVERTKIT_API_KEY;
@@ -28,24 +29,24 @@ export async function POST(request: Request) {
       body = await request.json();
     } catch {
       return NextResponse.json(
-        { error: 'Invalid JSON in request body' },
+        { error: 'Invalid JSON in request body' } as SubscriptionResponse,
         { status: 400 }
       );
     }
     
-    const { email } = body;
+    const { email } = body as SubscriptionFormData;
     
     // Enhanced email validation
     if (!email) {
       return NextResponse.json(
-        { error: 'Email is required' },
+        { error: 'Email is required' } as SubscriptionResponse,
         { status: 400 }
       );
     }
 
     if (!isValidEmail(email)) {
       return NextResponse.json(
-        { error: 'Invalid email format' },
+        { error: 'Invalid email format' } as SubscriptionResponse,
         { status: 400 }
       );
     }
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           api_key: API_KEY,
           email,
-        }),
+        } as Record<string, string>),
       }
     );
 
@@ -91,26 +92,26 @@ export async function POST(request: Request) {
         });
         
         return NextResponse.json(
-          { error: errorMessage },
+          { error: errorMessage } as SubscriptionResponse,
           { status: response.status }
         );
       }
 
       return NextResponse.json(
-        { success: true, message: 'Successfully subscribed to the newsletter!' },
+        { success: true, message: 'Successfully subscribed to the newsletter!' } as SubscriptionResponse,
         { status: 201 }
       );
     } catch (parseError) {
       console.error('Error parsing API response:', parseError);
       return NextResponse.json(
-        { error: 'Error processing the subscription service response' },
+        { error: 'Error processing the subscription service response' } as SubscriptionResponse,
         { status: 500 }
       );
     }
   } catch (error) {
     console.error('Subscription error:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json(
-      { error: 'An error occurred while subscribing' },
+      { error: 'An error occurred while subscribing' } as SubscriptionResponse,
       { status: 500 }
     );
   }
