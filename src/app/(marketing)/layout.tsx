@@ -19,7 +19,7 @@ export default function MarketingLayout({
     pathname !== '/studio'; // Skip Sanity studio
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative flex-1 flex flex-col">
       {/* Apply particle animation to all marketing pages except blog posts */}
       {showParticles && (
         <ParticleAnimation 

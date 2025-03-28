@@ -42,7 +42,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-8 py-16 relative">
+    <div className="max-w-4xl mx-auto px-8 py-16 relative flex-1 flex flex-col">
       {/* Add JSON-LD structured data */}
       <script
         type="application/ld+json"
