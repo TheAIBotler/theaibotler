@@ -1,36 +1,31 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Hello, I'm TheAIBotler 👋
 
-## Getting Started
+I build tools that help people save time and money through practical AI applications.
 
-First, run the development server:
+## 🤖 About Me
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+I'm a developer passionate about making AI accessible and useful for everyone. My projects focus on creating practical tools that solve real problems and demonstrating how AI can be integrated into everyday workflows.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 My Projects
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **[TheAIBotler Website](https://www.theaibotler.com)** - My personal site featuring AI tools, experiments, and insights
+- **[Blog](https://www.theaibotler.com/blog)** - Musings about my experience dabbling with AI
+- **[Tools](https://www.theaibotler.com/tools)** - AI-powered utilities for increasing productivity and solving problems
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 🧠 AI Experience
 
-## Learn More
+- **LLM Models**: Anthropic Claude, Google Gemini, OpenAI ChatGPT
+- **AI Domains**: Prompt engineering, RAG systems, AI agents, MCP
+- **Applications**: Content generation, data analysis, automation workflows
 
-To learn more about Next.js, take a look at the following resources:
+## 📈 Current Focus
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+I'm currently working on expanding my collection of AI tools and writing more practical guides on implementing AI in everyday workflows. My goal is to bridge the gap between cutting-edge AI technology and practical applications that anyone can use.
+<!---
+## 📊 GitHub Stats
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+![GitHub stats](https://github-readme-stats.vercel.app/api?username=theaibotler&show_icons=true&theme=dark)
+-->
+---
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+*"Making AI accessible to everyone through experiments, insights, and practical applications"*
