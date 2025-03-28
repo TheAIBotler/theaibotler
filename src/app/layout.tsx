@@ -93,7 +93,7 @@ export default function RootLayout({
       <head>
         <script src="/sw-register.js" defer />
       </head>
-      <body className={`${inter.className} bg-white dark:bg-gray-900 flex flex-col h-full`}>
+      <body className={`${inter.className} bg-white dark:bg-gray-900 flex flex-col min-h-screen h-full`}>
         <Providers>
           {/* Skip to content link for accessibility */}
           <a 
@@ -106,7 +106,7 @@ export default function RootLayout({
           <Navigation />
           {/* Site-wide background animation */}
           <ParticleAnimation fullPage={true} particleCount={30} particleColor="mixed" />
-          <main id="main-content" className="flex-1">
+          <main id="main-content" className="flex-1 flex flex-col">
             {children}
           </main>
           <Footer />

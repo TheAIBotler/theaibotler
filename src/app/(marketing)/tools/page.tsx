@@ -65,7 +65,7 @@ export default function ToolsPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-8">
+    <div className="max-w-4xl mx-auto p-8 flex-1 flex flex-col">
       {/* Add JSON-LD structured data */}
       <script
         type="application/ld+json"
