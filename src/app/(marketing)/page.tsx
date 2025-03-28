@@ -2,7 +2,6 @@
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import EmailSignup from '@/components/EmailSignup';
-import OptimizedImage from '@/components/OptimizedImage';
 import type { Metadata } from 'next';
 
 // Generate metadata for the homepage
@@ -67,17 +66,8 @@ export default function HomePage() {
         I build tools to help you save time and money.
         </p>
           
-          {/* Example of optimized image */}
-          <div className="w-full max-w-2xl mx-auto mb-6">
-            <OptimizedImage
-              src="/images/ai-illustration.jpg"
-              alt="AI technology illustration"
-              width={800}
-              height={450}
-              priority={true}
-              className="rounded-lg shadow-md"
-            />
-          </div>
+          {/* Removed missing image reference */}
+
         
         {/* Clear call-to-action buttons */}
         <div className="pt-6 flex flex-col sm:flex-row gap-4 justify-center">
