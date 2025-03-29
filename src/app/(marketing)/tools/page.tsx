@@ -25,19 +25,19 @@ export default function ToolsPage() {
   
   const tools: Tool[] = [
     {
-      title: "EquationOracle",
-      description: "Harness the power of AI to generate custom mathematics questions across any subject area. An intelligent tool that creates personalized practice materials, tests, and learning resources tailored to specific learning objectives.",
+      title: "ExamPrep.tools",
+      description: "Generate customized practice questions tailored specifically for O-Level Math (Singapore), with planned expansion to other subjects and education levels.",
       status: "coming-soon",
       estimatedRelease: "Q2 2025",
       features: [
-        "Adaptive difficulty scaling from elementary concepts to advanced university mathematics",
-        "Contextual problem generation based on real-world scenarios and applications",
-        "Intelligent solution pathways with multiple solving methods",
-        "Personalized question creation based on learning gaps and strengths",
-        "Curriculum alignment for educational standards worldwide",
-        "Export in multiple formats including PDF, Word, and interactive web pages"
+        "Smart question generator that creates practice problems matching Singapore O-Level Math syllabus",
+        "Difficulty settings from foundational concepts to challenging application questions",
+        "Step-by-step solution explanations with multiple solving approaches",
+        "Topic-specific question sets to target areas needing improvement",
+        "Progress tracking to identify knowledge gaps",
+        "Downloadable practice papers in PDF format for offline study"
       ],
-      category: "Education"
+      category: "Education",
     }
   ];
 
