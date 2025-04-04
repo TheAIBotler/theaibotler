@@ -2,7 +2,7 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { supabase, customSignOut, checkIsAuthor } from '@/app/utils/supabase/client'
+import { supabase, customSignOut, checkIsAuthor, setSessionContext } from '@/app/utils/supabase/client'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 
 interface AuthContextType {
@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set up auth state listener
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email)
+        // console.log('Auth state changed:', event, session?.user?.email)
         
         setSession(session)
         setUser(session?.user ?? null)
@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try {
             const isUserAuthor = await checkIsAuthor()
             setIsAuthor(isUserAuthor)
-            console.log('Author check result:', isUserAuthor)
+            // console.log('Author check result:', isUserAuthor)
           } catch (e) {
             console.error('Error checking author status:', e)
             setIsAuthor(false)
@@ -75,14 +75,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     )
 
+    // Add tab visibility change handler
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Tab became visible, refreshing connection...')
+        setIsLoading(true)
+        
+        try {
+          // Refresh the session
+          const { data } = await supabase.auth.refreshSession()
+          
+          // Update context with refreshed session
+          setSession(data.session)
+          setUser(data.session?.user ?? null)
+          
+          // Reset session context
+          await setSessionContext()
+          
+          // Re-check author status if user is logged in
+          if (data.session?.user?.email) {
+            const isUserAuthor = await checkIsAuthor()
+            setIsAuthor(isUserAuthor)
+          }
+        } catch (error) {
+          console.error('Error refreshing connection:', error)
+          
+          // If refresh fails, try to get the current session as fallback
+          try {
+            const { data: { session } } = await supabase.auth.getSession()
+            setSession(session)
+            setUser(session?.user ?? null)
+          } catch (e) {
+            console.error('Fallback session fetch failed:', e)
+          }
+        } finally {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    // Add event listener for visibility changes
+    if (typeof window !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+    }
+    
+    // Clean up function
     return () => {
       authListener.subscription.unsubscribe()
+      if (typeof window !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
+      }
     }
   }, [])
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('Attempting sign in for:', email)
+      // console.log('Attempting sign in for:', email)
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
