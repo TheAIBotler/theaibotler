@@ -1,14 +1,14 @@
 // components/CommentsContainer.tsx
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase, getSessionId } from '@/app/utils/supabase/client'
 import { CommentWithReplies } from '@/app/utils/supabase/types'
 import CommentThread from './CommentThread'
 import AuthorLogin from './AuthorLogin'
 import { useAuth } from '@/app/context/AuthContext'
-import { Clock, ThumbsUp } from 'lucide-react'
+import { Calendar, Clock, ThumbsUp, ChevronDown } from 'lucide-react'
 
 type SortOption = 'newest' | 'oldest' | 'popular'
 
@@ -74,6 +74,104 @@ export default function CommentsContainer({
   const sortedInitialComments = sortComments(initialComments, 'newest');
   // Initialize state with sorted comments
   const [comments, setComments] = useState<CommentWithReplies[]>(sortedInitialComments);
+
+  // Mobile-friendly dropdown component for sort options
+  const MobileSortDropdown = ({ 
+    currentSort, 
+    onSelect, 
+    disabled 
+  }: { 
+    currentSort: SortOption, 
+    onSelect: (option: SortOption) => void,
+    disabled: boolean 
+  }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    
+    // Close dropdown when clicking outside
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+          setIsOpen(false);
+        }
+      };
+      
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }, []);
+    
+    // Get label and icon for current sort option
+    const getSortLabel = (option: SortOption) => {
+      switch (option) {
+        case 'newest':
+          return { label: 'Newest', icon: <Clock size={14} /> };
+        case 'oldest':
+          return { label: 'Oldest', icon: <Calendar size={14} /> };
+        case 'popular':
+          return { label: 'Popular', icon: <ThumbsUp size={14} /> };
+      }
+    };
+    
+    const currentOption = getSortLabel(currentSort);
+    
+    return (
+      <div className="relative" ref={dropdownRef}>
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          disabled={disabled}
+          className="flex items-center gap-1 px-2.5 py-1.5 text-xs bg-gray-100 dark:bg-gray-800 rounded-lg text-gray-800 dark:text-gray-200"
+        >
+          <span className="flex items-center gap-1.5">
+            {currentOption.icon}
+            <span>Sort: {currentOption.label}</span>
+          </span>
+          <ChevronDown size={14} className={`ml-1 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+        
+        {isOpen && (
+          <div className="absolute top-full left-0 mt-1 w-40 bg-white dark:bg-gray-800 shadow-lg rounded-md overflow-hidden z-10">
+            <div className="py-1">
+              <button
+                onClick={() => { onSelect('newest'); setIsOpen(false); }}
+                className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 ${
+                  currentSort === 'newest' 
+                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100' 
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                <Clock size={14} />
+                Newest
+              </button>
+              <button
+                onClick={() => { onSelect('oldest'); setIsOpen(false); }}
+                className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 ${
+                  currentSort === 'oldest' 
+                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100' 
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                <Calendar size={14} />
+                Oldest
+              </button>
+              <button
+                onClick={() => { onSelect('popular'); setIsOpen(false); }}
+                className={`w-full text-left px-3 py-2 text-xs flex items-center gap-2 ${
+                  currentSort === 'popular' 
+                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100' 
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                <ThumbsUp size={14} />
+                Popular
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Function to organize comments into a nested structure
   const organizeCommentsIntoThreads = useCallback((flatComments: CommentWithReplies[]): CommentWithReplies[] => {
@@ -358,45 +456,55 @@ export default function CommentsContainer({
         
         <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4">
           <div className="flex items-center">
-            <div className="flex rounded-lg bg-gray-100 dark:bg-gray-800 p-1">
+            {/* Desktop version - Text + icons */}
+            <div className="hidden sm:flex rounded-lg bg-gray-100 dark:bg-gray-800 p-1">
               <button 
                 onClick={() => handleSortChange('newest')}
                 disabled={isSorting}
-                className={`flex items-center gap-1 px-2 py-1 text-xs rounded ${
+                className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded ${
                   sortOption === 'newest' 
-                    ? 'bg-white dark:bg-gray-700 shadow-sm' 
-                    : 'text-gray-600 dark:text-gray-300'
+                    ? 'bg-white dark:bg-gray-700 shadow-sm font-medium' 
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                <Clock size={14} />
-                <span className="hidden sm:inline">Newest</span>
+                <Clock size={14} className="-ml-0.5 mr-1" />
+                Newest
               </button>
               
               <button 
                 onClick={() => handleSortChange('oldest')}
                 disabled={isSorting}
-                className={`flex items-center gap-1 px-2 py-1 text-xs rounded ${
+                className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded ${
                   sortOption === 'oldest' 
-                    ? 'bg-white dark:bg-gray-700 shadow-sm' 
-                    : 'text-gray-600 dark:text-gray-300'
+                    ? 'bg-white dark:bg-gray-700 shadow-sm font-medium' 
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                <Clock size={14} />
-                <span className="hidden sm:inline">Oldest</span>
+                <Calendar size={14} className="-ml-0.5 mr-1" />
+                Oldest
               </button>
               
               <button 
                 onClick={() => handleSortChange('popular')}
                 disabled={isSorting}
-                className={`flex items-center gap-1 px-2 py-1 text-xs rounded ${
+                className={`flex items-center gap-1 px-3 py-1.5 text-xs rounded ${
                   sortOption === 'popular' 
-                    ? 'bg-white dark:bg-gray-700 shadow-sm' 
-                    : 'text-gray-600 dark:text-gray-300'
+                    ? 'bg-white dark:bg-gray-700 shadow-sm font-medium' 
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                <ThumbsUp size={14} />
-                <span className="hidden sm:inline">Popular</span>
+                <ThumbsUp size={14} className="-ml-0.5 mr-1" />
+                Popular
               </button>
+            </div>
+
+            {/* Mobile version - Dropdown */}
+            <div className="sm:hidden">
+              <MobileSortDropdown 
+                currentSort={sortOption}
+                onSelect={handleSortChange}
+                disabled={isSorting}
+              />
             </div>
           </div>
           
