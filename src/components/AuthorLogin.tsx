@@ -72,70 +72,20 @@ export default function AuthorLogin() {
     return (
       <div className="relative" ref={dropdownRef}>
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={handleSignOut}
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
-          className="p-1.5 text-gray-400 hover:text-gray-200 rounded transition-colors relative"
-          aria-label="Author options"
+          className="flex items-center gap-2 p-1.5 text-gray-400 hover:text-gray-200 rounded transition-colors relative"
+          aria-label="Sign out"
         >
-          <User size={18} />
-          {showTooltip && !isOpen && (
+          <LogOut size={18} />
+          <span className="hidden md:inline text-sm">Sign out</span>
+          {showTooltip && (
             <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-gray-200 text-xs rounded whitespace-nowrap">
-              Author
+              Sign out
             </div>
           )}
         </button>
-
-        {isOpen && (
-          <>
-            {/* Desktop dropdown */}
-            <div 
-              className="hidden md:block absolute right-0 top-8 mt-2 py-2 w-48 bg-white rounded-lg shadow-lg z-50"
-            >
-              <div className="px-3 py-2 text-sm font-medium text-gray-900 border-b border-gray-100">
-                Signed in as TheAIBotler
-              </div>
-              <button
-                onClick={handleSignOut}
-                className="w-full px-3 py-2 mt-1 flex items-center gap-2 hover:bg-gray-50 transition-colors text-gray-700"
-              >
-                <LogOut size={16} className="text-gray-600 shrink-0" />
-                <span className="text-left text-sm">Sign out</span>
-              </button>
-            </div>
-
-            {/* Mobile modal */}
-            <div 
-              className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 transition-opacity duration-300"
-              onClick={(e) => {
-                if (e.target === e.currentTarget) {
-                  setIsOpen(false);
-                }
-              }}
-            >
-              <div 
-                className="bg-white w-full max-w-xs rounded-2xl shadow-xl transform transition-transform duration-300 translate-y-0 scale-100 opacity-100"
-                style={{ maxHeight: '90vh' }}
-              >
-                <div className="p-4 border-b border-gray-100">
-                  <h3 className="text-lg font-medium text-gray-900">Options</h3>
-                </div>
-                <div className="p-2">
-                  <div className="px-4 py-3 text-gray-600">
-                    Signed in as TheAIBotler
-                  </div>
-                  <button
-                    onClick={handleSignOut}
-                    className="w-full px-4 py-3 flex items-center gap-3 rounded-xl hover:bg-gray-50 transition-colors text-gray-700"
-                  >
-                    <LogOut size={18} className="text-gray-600 shrink-0" />
-                    <span className="text-left text-base font-medium">Sign out</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
       </div>
     )
   }
@@ -160,9 +110,9 @@ export default function AuthorLogin() {
 
       {isOpen && (
         <>
-          {/* Desktop dropdown */}
+          {/* Desktop dropdown - centered */}
           <div 
-            className="hidden md:block absolute right-0 top-8 mt-2 p-4 w-64 bg-white rounded-lg shadow-lg z-50"
+            className="hidden md:block absolute left-1/2 -translate-x-1/2 top-8 mt-2 p-4 w-64 bg-white rounded-lg shadow-lg z-50"
           >
             <h3 className="text-sm font-medium text-gray-900 mb-3">Author Login</h3>
             <form onSubmit={handleSubmit} className="space-y-3">
