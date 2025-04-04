@@ -1,7 +1,7 @@
 // components/CommentsContainer.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase, getSessionId } from '@/app/utils/supabase/client'
 import { CommentWithReplies } from '@/app/utils/supabase/types'
@@ -30,34 +30,8 @@ export default function CommentsContainer({
   const [sortOption, setSortOption] = useState<SortOption>('newest')
   const [isSorting, setIsSorting] = useState(false)
 
-  // Initialize session when component mounts
-  useEffect(() => {
-    const initializeSession = async () => {
-      // Set the session context for anonymous users
-      if (!user) {
-        const sessionId = getSessionId();
-        try {
-          await supabase.rpc('set_session_context', {
-            session_id: sessionId
-          });
-        } catch (error) {
-          console.error('Error setting session context:', error);
-        }
-      }
-      setSessionInitialized(true);
-    };
-
-    initializeSession();
-  }, [user]);
-
-  // Update sorting when option changes
-  useEffect(() => {
-    if (sessionInitialized) {
-      refreshComments();
-    }
-  }, [sortOption, sessionInitialized]);
-
   // Function to organize comments into a nested structure
+  // This doesn't need any external dependencies, so it can be defined outside useCallback
   const organizeCommentsIntoThreads = (flatComments: CommentWithReplies[]): CommentWithReplies[] => {
     // Create a map for quick lookup by ID
     const commentMap = new Map<string, CommentWithReplies>();
@@ -95,7 +69,8 @@ export default function CommentsContainer({
     return rootComments;
   };
 
-  const refreshComments = async () => {
+  // Memoize refreshComments to avoid recreating it on every render
+  const refreshComments = useCallback(async () => {
     try {
       setIsSorting(true);
       
@@ -143,9 +118,37 @@ export default function CommentsContainer({
     } finally {
       setIsSorting(false);
     }
-  };
+  }, [postId, sortOption, user, router]); // Include all dependencies used in the function
 
-  const handleEditComment = async (commentId: string, newContent: string) => {
+  // Initialize session when component mounts
+  useEffect(() => {
+    const initializeSession = async () => {
+      // Set the session context for anonymous users
+      if (!user) {
+        const sessionId = getSessionId();
+        try {
+          await supabase.rpc('set_session_context', {
+            session_id: sessionId
+          });
+        } catch (error) {
+          console.error('Error setting session context:', error);
+        }
+      }
+      setSessionInitialized(true);
+    };
+
+    initializeSession();
+  }, [user]);
+
+  // Update sorting when option changes
+  useEffect(() => {
+    if (sessionInitialized) {
+      refreshComments();
+    }
+  }, [sortOption, sessionInitialized, refreshComments]); // Include refreshComments in dependencies
+
+  // Memoize the edit function to avoid recreating it on every render
+  const handleEditComment = useCallback(async (commentId: string, newContent: string) => {
     try {
       // For anonymous users, set session context
       if (!user) {
@@ -187,9 +190,10 @@ export default function CommentsContainer({
     } catch (err) {
       console.error('Error editing comment:', err);
     }
-  };
+  }, [isAuthor, refreshComments, user]);
 
-  const handleDeleteComment = async (commentId: string) => {
+  // Memoize the delete function to avoid recreating it on every render
+  const handleDeleteComment = useCallback(async (commentId: string) => {
     try {
       // For anonymous users, set session context
       if (!user) {
@@ -262,20 +266,12 @@ export default function CommentsContainer({
     } catch (err) {
       console.error('Error deleting comment:', err);
     }
-  };
+  }, [isAuthor, refreshComments, user]);
 
   // Handler for changing sort option
-  const handleSortChange = (option: SortOption) => {
+  const handleSortChange = useCallback((option: SortOption) => {
     setSortOption(option);
-  };
-
-  // Don't render anything until session is initialized
-  if (!sessionInitialized) {
-    return <div className="mt-16 border-t border-gray-200 dark:border-gray-700 pt-8">
-      <h2 className="text-2xl font-bold mb-8 text-gray-900 dark:text-gray-100">Comments</h2>
-      <div className="text-center py-4">Loading comments...</div>
-    </div>;
-  }
+  }, []);
 
   // Count total comments including replies
   const totalCommentCount = comments.reduce((total, comment) => {
@@ -291,6 +287,14 @@ export default function CommentsContainer({
       });
     }
     return count;
+  }
+
+  // Don't render anything until session is initialized
+  if (!sessionInitialized) {
+    return <div className="mt-16 border-t border-gray-200 dark:border-gray-700 pt-8">
+      <h2 className="text-2xl font-bold mb-8 text-gray-900 dark:text-gray-100">Comments</h2>
+      <div className="text-center py-4">Loading comments...</div>
+    </div>;
   }
 
   return (
