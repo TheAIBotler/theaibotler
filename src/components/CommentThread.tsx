@@ -1,7 +1,7 @@
 // components/CommentThread.tsx
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { type CommentWithReplies } from '@/app/utils/supabase/types'
 import { formatDistanceToNowStrict } from 'date-fns'
 import Image from 'next/image'
@@ -34,9 +34,58 @@ const CommentThread = ({
   const [collapsedComments, setCollapsedComments] = useState<Set<string>>(new Set())
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [viewingEditHistory, setViewingEditHistory] = useState<string | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
   
   // Get current session ID for checking own comments
   const currentSessionId = getSessionId();
+  
+  // Detect mobile devices
+  useEffect(() => {
+    const checkIfMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    // Initial check
+    checkIfMobile();
+    
+    // Add event listener for window resize
+    window.addEventListener('resize', checkIfMobile);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkIfMobile);
+  }, []);
+  
+  // Auto-collapse deep comments on mobile
+  useEffect(() => {
+    if (isMobile) {
+      // Get all comments with depth > 3
+      const deepComments = findDeepComments(comments, 0);
+      
+      // Collapse them
+      setCollapsedComments(prevCollapsed => {
+        const newCollapsed = new Set(prevCollapsed);
+        deepComments.forEach(commentId => newCollapsed.add(commentId));
+        return newCollapsed;
+      });
+    }
+  }, [comments, isMobile]);
+  
+  // Helper function to find deep comments
+  const findDeepComments = (commentList: CommentWithReplies[], currentDepth: number): string[] => {
+    let result: string[] = [];
+    
+    commentList.forEach(comment => {
+      if (currentDepth > 3) {
+        result.push(comment.id);
+      }
+      
+      if (comment.replies && comment.replies.length > 0) {
+        result = [...result, ...findDeepComments(comment.replies, currentDepth + 1)];
+      }
+    });
+    
+    return result;
+  };
   
   // Create a flat map of all comments for easy lookup
   const commentMap = new Map<string, CommentWithReplies>();
