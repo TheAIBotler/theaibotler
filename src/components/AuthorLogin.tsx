@@ -4,6 +4,7 @@
 import { User, LogOut } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/app/context/AuthContext'
+import { SessionLogger } from '@/app/utils/sessionLogger'
 
 export default function AuthorLogin() {
   const [isOpen, setIsOpen] = useState(false)
@@ -11,10 +12,11 @@ export default function AuthorLogin() {
   const [error, setError] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
   const [showTooltip, setShowTooltip] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
   const [credentials, setCredentials] = useState({ email: '', password: '' })
   const dropdownRef = useRef<HTMLDivElement>(null)
   
-  const { signIn, signOut, user, isAuthor } = useAuth()
+  const { signIn, signOut, user, isAuthor, forceRefreshAuth, status } = useAuth()
 
   useEffect(() => {
     setMounted(true)
@@ -37,50 +39,107 @@ export default function AuthorLogin() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoggingIn(true)
-    setError(null)
+    e.preventDefault();
+    setIsLoggingIn(true);
+    setError(null);
 
     try {
-      const { error: signInError } = await signIn(credentials.email, credentials.password)
+      SessionLogger.info('auth', 'Submitting login form', { email: credentials.email });
+      
+      const { error: signInError } = await signIn(credentials.email, credentials.password);
 
       if (signInError) {
-        console.error('Sign in error:', signInError)
-        setError('Invalid email or password')
+        SessionLogger.error('auth', 'Sign in error from form submission', { error: signInError });
+        setError('Invalid email or password');
       } else {
-        setIsOpen(false)
+        SessionLogger.info('auth', 'Sign in successful from form submission');
+        setIsOpen(false);
+        
+        // Force a refresh of auth state to ensure UI updates
+        setTimeout(() => {
+          forceRefreshAuth().then(success => {
+            SessionLogger.info('auth', `Force refresh after sign in ${success ? 'succeeded' : 'failed'}`);
+          });
+        }, 500); // Small delay to allow auth state to settle
       }
     } catch (err) {
-      console.error('Error during login:', err)
-      setError('Something went wrong. Please try again.')
+      console.error('Error during login:', err);
+      SessionLogger.error('auth', 'Unexpected error during login from form', { error: err });
+      setError('Something went wrong. Please try again.');
+      
+      // Try to refresh auth state to recover
+      try {
+        await forceRefreshAuth();
+      } catch (refreshErr) {
+        // Ignore refresh errors
+      }
     } finally {
-      setIsLoggingIn(false)
+      setIsLoggingIn(false);
     }
-  }
+  };
 
   const handleSignOut = async () => {
     try {
+      setIsSigningOut(true)
       await signOut()
       setIsOpen(false)
     } catch (err) {
       console.error('Error signing out:', err)
+      SessionLogger.error('auth', 'Error in signOut handler', { error: err })
+      
+      // Try to refresh auth state to recover
+      try {
+        await forceRefreshAuth()
+      } catch (refreshErr) {
+        // Ignore refresh errors
+      }
+    } finally {
+      setIsSigningOut(false)
     }
   }
 
   // If logged in as author
-  if (user && isAuthor) {
+  if (user) {
+    // If user is authenticated but not an author, show a different UI
+    if (!isAuthor) {
+      SessionLogger.info('auth', 'User authenticated but not an author', { email: user.email });
+      
+      return (
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={handleSignOut}
+            onMouseEnter={() => setShowTooltip(true)}
+            onMouseLeave={() => setShowTooltip(false)}
+            className="flex items-center gap-2 p-1.5 text-gray-400 hover:text-gray-200 rounded transition-colors relative disabled:opacity-50"
+            aria-label="Sign out"
+            disabled={isSigningOut}
+          >
+            <LogOut size={18} />
+            <span className="hidden md:inline text-sm">{isSigningOut ? 'Signing out...' : 'Sign out (non-author)'}</span>
+            {showTooltip && !isSigningOut && (
+              <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-gray-200 text-xs rounded whitespace-nowrap">
+                Sign out (You're logged in but not an author)
+              </div>
+            )}
+          </button>
+        </div>
+      );
+    }
+    
+    // Regular author UI
     return (
       <div className="relative" ref={dropdownRef}>
         <button
           onClick={handleSignOut}
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
-          className="flex items-center gap-2 p-1.5 text-gray-400 hover:text-gray-200 rounded transition-colors relative"
+          className="flex items-center gap-2 p-1.5 text-gray-400 hover:text-gray-200 rounded transition-colors relative disabled:opacity-50"
           aria-label="Sign out"
+          disabled={isSigningOut}
         >
           <LogOut size={18} />
-          <span className="hidden md:inline text-sm">Sign out</span>
-          {showTooltip && (
+          <span className="hidden md:inline text-sm">{isSigningOut ? 'Signing out...' : 'Sign out'}</span>
+          {showTooltip && !isSigningOut && (
             <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-gray-200 text-xs rounded whitespace-nowrap">
               Sign out
             </div>

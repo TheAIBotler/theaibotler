@@ -1,11 +1,19 @@
 // app/context/AuthContext.tsx
 'use client'
 
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react'
+import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react'
 import { supabase, customSignOut, checkIsAuthor } from '@/app/utils/supabase/client'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { SessionLogger } from '@/app/utils/sessionLogger'
 import { SessionService } from '@/services/sessionService'
+
+// Auth status enum for better state tracking
+enum AuthStatus {
+  LOADING = 'loading',
+  AUTHENTICATED = 'authenticated',
+  UNAUTHENTICATED = 'unauthenticated',
+  ERROR = 'error'
+}
 
 interface AuthContextType {
   user: User | null
@@ -14,276 +22,371 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
   signOut: () => Promise<void>
   isAuthor: boolean
+  status: AuthStatus
+  forceRefreshAuth: () => Promise<boolean> // New method for external components to force refresh
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  // State
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthor, setIsAuthor] = useState(false)
+  const [status, setStatus] = useState<AuthStatus>(AuthStatus.LOADING)
+  
+  // Refs
   const initializeStarted = useRef(false)
+  const authCheckTimer = useRef<NodeJS.Timeout | null>(null)
+  const lastAuthCheck = useRef<number>(0)
+  const authCheckInProgress = useRef<boolean>(false)
+  const refreshCount = useRef<number>(0)
 
-  // Effect for initial session setup - runs only once on mount
-  useEffect(() => {
-    // Avoid running more than once
-    if (initializeStarted.current) return
-    initializeStarted.current = true
+  // Force refresh auth - useful for components to call if they detect auth issues
+  const forceRefreshAuth = useCallback(async (): Promise<boolean> => {
+    if (authCheckInProgress.current) return false;
     
-    // Check if there's an active session on component mount
-    const setData = async () => {
-      SessionLogger.info('auth', 'Initializing auth context');
+    try {
+      authCheckInProgress.current = true;
+      
+      // Get the current auth state directly from Supabase
+      const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        SessionLogger.error('auth', 'Error fetching auth state during force refresh', { error });
+        setStatus(AuthStatus.ERROR);
+        return false;
+      }
+      
+      // Update states based on session data
+      setSession(currentSession);
+      
+      if (currentSession?.user) {
+        setUser(currentSession.user);
+        setStatus(AuthStatus.AUTHENTICATED);
+        SessionService.getInstance().setUserId(currentSession.user.id);
+        
+        // Check author status
+        if (currentSession.user.email) {
+          const authorStatus = await checkIsAuthor();
+          setIsAuthor(authorStatus);
+        }
+        
+        SessionLogger.info('auth', 'Auth force refreshed - user authenticated', {
+          email: currentSession.user.email
+        });
+        return true;
+      } else {
+        // No active session
+        setUser(null);
+        setIsAuthor(false);
+        setStatus(AuthStatus.UNAUTHENTICATED);
+        SessionService.getInstance().setUserId(null);
+        
+        SessionLogger.info('auth', 'Auth force refreshed - no authenticated user');
+        return false;
+      }
+    } catch (e) {
+      SessionLogger.error('auth', 'Unexpected error during force refresh', { error: e });
+      setStatus(AuthStatus.ERROR);
+      return false;
+    } finally {
+      authCheckInProgress.current = false;
+    }
+  }, []);
+
+  // Periodic auth check function
+  const checkAuthState = useCallback(async (immediate = false): Promise<void> => {
+    // Skip if another check is in progress or if not immediate and last check was recent
+    const now = Date.now();
+    if (authCheckInProgress.current) return;
+    if (!immediate && now - lastAuthCheck.current < 30000) return; // 30 second throttle
+    
+    try {
+      authCheckInProgress.current = true;
+      lastAuthCheck.current = now;
+      
+      // Only log every 5th check to reduce noise unless there's an issue
+      const shouldLog = immediate || refreshCount.current++ % 5 === 0;
+      if (shouldLog) {
+        SessionLogger.debug('auth', 'Checking auth state', {
+          immediate, currentStatus: status
+        });
+      }
+      
+      const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        SessionLogger.error('auth', 'Error during auth check', { error });
+        return;
+      }
+      
+      // Only update if there's a meaningful change to reduce renders
+      const currentUserEmail = user?.email;
+      const newUserEmail = currentSession?.user?.email;
+      
+      const stateChanged = (
+        (!!currentSession?.user) !== (!!user) ||
+        currentUserEmail !== newUserEmail
+      );
+      
+      if (stateChanged) {
+        SessionLogger.info('auth', 'Auth state changed during check', {
+          hadUser: !!user,
+          hasUser: !!currentSession?.user,
+          oldEmail: currentUserEmail,
+          newEmail: newUserEmail
+        });
+        
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        
+        if (currentSession?.user) {
+          setStatus(AuthStatus.AUTHENTICATED);
+          SessionService.getInstance().setUserId(currentSession.user.id);
+          
+          // Check for author status
+          if (currentSession.user.email) {
+            const authorStatus = await checkIsAuthor();
+            setIsAuthor(authorStatus);
+          }
+        } else {
+          setStatus(AuthStatus.UNAUTHENTICATED);
+          setIsAuthor(false);
+          SessionService.getInstance().setUserId(null);
+        }
+      }
+    } catch (e) {
+      SessionLogger.error('auth', 'Unexpected error during auth check', { error: e });
+    } finally {
+      authCheckInProgress.current = false;
+    }
+  }, [user, status]);
+
+  // Setup auth state tracking and listeners
+  useEffect(() => {
+    // Avoid double initialization
+    if (initializeStarted.current) return;
+    initializeStarted.current = true;
+    
+    SessionLogger.info('auth', 'Initializing auth context');
+    
+    // Initial auth check
+    const initialSetup = async () => {
+      setIsLoading(true);
       
       try {
-        const { data: { session }, error } = await supabase.auth.getSession()
+        const { data: { session: initialSession }, error } = await supabase.auth.getSession();
         
         if (error) {
           SessionLogger.error('auth', 'Error fetching initial session', { error });
+          setStatus(AuthStatus.ERROR);
         } else {
-          SessionLogger.info('auth', session ? 'Found existing session' : 'No active session');
-        }
-        
-        setSession(session)
-        setUser(session?.user ?? null)
-        
-        // Update SessionService with user ID if authenticated
-        if (session?.user) {
-          SessionService.getInstance().setUserId(session.user.id);
-        }
-        
-        // Check if user is an author by matching email
-        if (session?.user?.email) {
-          SessionLogger.debug('auth', 'Checking author status for initial session');
-          const isUserAuthor = await checkIsAuthor()
-          setIsAuthor(isUserAuthor)
-          SessionLogger.info('auth', `User ${isUserAuthor ? 'is' : 'is not'} an author`);
-        }
-      } catch (e) {
-        SessionLogger.error('auth', 'Error in auth setup', { error: e });
-      } finally {
-        setIsLoading(false)
-        SessionLogger.info('auth', 'Auth context initialized');
-      }
-    }
-
-    // Set up auth state listener
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        SessionLogger.info('auth', `Auth state changed: ${event}`, {
-          userEmail: session?.user?.email
-        });
-        
-        setSession(session)
-        setUser(session?.user ?? null)
-        
-        // Update SessionService with user ID if authenticated
-        if (session?.user) {
-          SessionService.getInstance().setUserId(session.user.id);
-        } else {
-          SessionService.getInstance().setUserId(null);
-        }
-        
-        // Check if user is an author when auth state changes
-        if (session?.user?.email) {
-          try {
-            const isUserAuthor = await checkIsAuthor()
-            setIsAuthor(isUserAuthor)
-            SessionLogger.info('auth', `Author check result: ${isUserAuthor ? 'Is author' : 'Not an author'}`);
-          } catch (e) {
-            SessionLogger.error('auth', 'Error checking author status', { error: e });
-            setIsAuthor(false)
-          }
-        } else {
-          setIsAuthor(false)
-        }
-        
-        setIsLoading(false)
-      }
-    )
-
-    // Add tab visibility change handler
-    const handleVisibilityChange = async () => {
-      const isVisible = document.visibilityState === 'visible';
-      SessionLogger.trackTabVisibility(isVisible);
-      
-      if (isVisible) {
-        SessionLogger.info('session', 'Tab became visible, refreshing connection');
-        setIsLoading(true);
-        
-        const startTime = performance.now();
-        const isCurrentlyAuthenticated = !!user?.id;
-        
-        try {
-          // Only refresh for authenticated users, anonymous users don't need refreshing
-          if (isCurrentlyAuthenticated) {
-            SessionLogger.debug('session', 'Refreshing authenticated user session');
+          setSession(initialSession);
+          
+          if (initialSession?.user) {
+            setUser(initialSession.user);
+            setStatus(AuthStatus.AUTHENTICATED);
+            SessionService.getInstance().setUserId(initialSession.user.id);
             
-            // Refresh the session
-            const { data, error } = await supabase.auth.refreshSession();
+            SessionLogger.info('auth', 'Found existing authenticated session', {
+              email: initialSession.user.email
+            });
             
-            if (error) {
-              SessionLogger.error('session', 'Session refresh failed for authenticated user', { 
-                error, userId: user?.id 
-              });
-            } else {
-              SessionLogger.info('session', 'Session refresh successful for authenticated user', {
-                email: data.session?.user?.email
-              });
-              
-              // Update context with refreshed session
-              setSession(data.session);
-              setUser(data.session?.user ?? null);
-              
-              // Update SessionService
-              if (data.session?.user) {
-                SessionService.getInstance().setUserId(data.session.user.id);
-              } else {
-                SessionService.getInstance().setUserId(null);
-              }
-              
-              // Re-check author status
-              if (data.session?.user?.email) {
-                SessionLogger.debug('session', 'Re-checking author status after tab visibility change');
-                try {
-                  const isUserAuthor = await checkIsAuthor();
-                  setIsAuthor(isUserAuthor);
-                  SessionLogger.info('session', `Author status re-check: ${isUserAuthor ? 'Is author' : 'Not an author'}`);
-                } catch (e) {
-                  SessionLogger.error('session', 'Error checking author status after tab change', { error: e });
-                  setIsAuthor(false);
-                }
-              } else {
-                // User was logged out during refresh
-                setIsAuthor(false);
+            // Check if user is an author
+            if (initialSession.user.email) {
+              try {
+                const isUserAuthor = await checkIsAuthor();
+                setIsAuthor(isUserAuthor);
+                SessionLogger.info('auth', `User ${isUserAuthor ? 'is' : 'is not'} an author`);
+              } catch (e) {
+                SessionLogger.error('auth', 'Error checking author status', { error: e });
               }
             }
           } else {
-            // For anonymous users, no session refresh is needed
-            SessionLogger.debug('session', 'No session refresh needed for anonymous users');
+            setUser(null);
+            setStatus(AuthStatus.UNAUTHENTICATED);
+            SessionService.getInstance().setUserId(null);
+            SessionLogger.info('auth', 'No active session');
           }
-        } catch (error) {
-          SessionLogger.error('session', 'Error during visibility change handling', { error });
-          
-          // Try to recover with a fallback session fetch
-          try {
-            SessionLogger.debug('session', 'Attempting fallback session fetch');
-            const { data: { session }, error: fallbackError } = await supabase.auth.getSession();
-            
-            if (fallbackError) {
-              SessionLogger.error('session', 'Fallback session fetch failed', { error: fallbackError });
-            } else {
-              const hadUserBefore = !!user?.id;
-              const hasUserNow = !!session?.user?.id;
-              
-              SessionLogger.info('session', 'Fallback session fetch result', { 
-                hadUserBefore, hasUserNow, email: session?.user?.email 
-              });
-              
-              setSession(session);
-              setUser(session?.user ?? null);
-              
-              // Update SessionService
-              if (session?.user) {
-                SessionService.getInstance().setUserId(session.user.id);
-              } else {
-                SessionService.getInstance().setUserId(null);
-              }
-            }
-          } catch (e) {
-            SessionLogger.error('session', 'Unexpected error during fallback session fetch', { error: e });
-          }
-        } finally {
-          const duration = Math.round(performance.now() - startTime);
-          SessionLogger.info('session', `Tab visibility connection refresh completed`, { 
-            duration,
-            isAuthenticated: !!user?.id
-          });
-          setIsLoading(false);
         }
+      } catch (e) {
+        SessionLogger.error('auth', 'Error in auth setup', { error: e });
+        setStatus(AuthStatus.ERROR);
+      } finally {
+        setIsLoading(false);
       }
-    }
-
+    };
+    
+    // Set up auth state listener
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event, changedSession) => {
+        // Skip initial setup event as we handle it separately
+        if (event === 'INITIAL_SESSION') return;
+        
+        SessionLogger.info('auth', `Auth state changed: ${event}`, {
+        userEmail: changedSession?.user?.email,
+        event,
+          hasUser: !!changedSession?.user
+        });
+        
+        // Update session and user state
+        setSession(changedSession);
+        
+        if (changedSession?.user) {
+        setUser(changedSession.user);
+        setStatus(AuthStatus.AUTHENTICATED);
+        
+        // Ensure SessionService transitions properly from anonymous to authenticated
+        const sessionService = SessionService.getInstance();
+        if (!sessionService.isAuthenticated()) {
+          SessionLogger.info('auth', 'Updating SessionService with authenticated user');
+        }
+        sessionService.setUserId(changedSession.user.id);
+          
+          // Check if user is an author
+          if (changedSession.user.email) {
+            try {
+              const isUserAuthor = await checkIsAuthor();
+              setIsAuthor(isUserAuthor);
+            } catch (e) {
+              SessionLogger.error('auth', 'Error checking author status', { error: e });
+              setIsAuthor(false);
+            }
+          }
+        } else {
+          setUser(null);
+          setIsAuthor(false);
+          setStatus(AuthStatus.UNAUTHENTICATED);
+          SessionService.getInstance().setUserId(null);
+        }
+        
+        setIsLoading(false);
+      }
+    );
+    
+    // Set up visibility change handler
+    const handleVisibilityChange = () => {
+      const isVisible = document.visibilityState === 'visible';
+      
+      if (isVisible) {
+        // When tab becomes visible, refresh auth state immediately
+        SessionLogger.info('session', 'Tab became visible, checking auth state');
+        checkAuthState(true);
+      }
+    };
+    
+    // Set up interval for periodic auth checks
+    authCheckTimer.current = setInterval(() => {
+      // Only run checks if the page is visible
+      if (document.visibilityState === 'visible') {
+        checkAuthState(false);
+      }
+    }, 60000); // Check every minute while page is visible
+    
     // Add event listener for visibility changes
     if (typeof window !== 'undefined') {
-      document.addEventListener('visibilitychange', handleVisibilityChange)
+      document.addEventListener('visibilitychange', handleVisibilityChange);
     }
     
-    // Initial data fetch
-    setData()
+    // Run initial setup
+    initialSetup();
     
-    // Clean up function
+    // Cleanup function
     return () => {
-      if (authListener && authListener.subscription) {
-        authListener.subscription.unsubscribe()
+      if (authListener?.subscription) {
+        authListener.subscription.unsubscribe();
       }
+      
+      if (authCheckTimer.current) {
+        clearInterval(authCheckTimer.current);
+        authCheckTimer.current = null;
+      }
+      
       if (typeof window !== 'undefined') {
-        document.removeEventListener('visibilitychange', handleVisibilityChange)
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
       }
+      
       SessionLogger.debug('auth', 'Auth context cleanup');
-    }
-  }, []) // Empty dependency array to run only once
-
+    };
+  }, [checkAuthState]);
+  
+  // Sign in function
   const signIn = async (email: string, password: string) => {
     try {
       SessionLogger.info('auth', 'Attempting sign in', { email });
+      setIsLoading(true);
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
-      })
+      });
       
       if (error) {
-        SessionLogger.error('auth', 'Sign in failed', { 
-          error, email
-        });
+        SessionLogger.error('auth', 'Sign in failed', { error, email });
+        setStatus(AuthStatus.ERROR);
       } else {
-        SessionLogger.info('auth', 'Sign in successful', { 
-          email: data.user?.email
-        });
+        SessionLogger.info('auth', 'Sign in successful', { email: data.user?.email });
+        setStatus(AuthStatus.AUTHENTICATED);
         
-        // Update SessionService with user ID
-        if (data.user) {
-          SessionService.getInstance().setUserId(data.user.id);
-        }
+        // Session and user state will be updated by onAuthStateChange
       }
       
-      return { error }
+      return { error };
     } catch (err) {
       SessionLogger.error('auth', 'Unexpected error during sign in', { error: err, email });
-      return { error: err as AuthError }
+      setStatus(AuthStatus.ERROR);
+      return { error: err as AuthError };
+    } finally {
+      setIsLoading(false);
     }
-  }
-
+  };
+  
+  // Sign out function
   const signOut = async () => {
     try {
       SessionLogger.info('auth', 'Signing out user', { email: user?.email });
-      await customSignOut()
-      setIsAuthor(false)
-      setUser(null)
-      setSession(null)
+      setIsLoading(true);
+      
+      await customSignOut();
+      
+      // These will be updated by onAuthStateChange, but set them directly too
+      setIsAuthor(false);
+      setUser(null);
+      setSession(null);
+      setStatus(AuthStatus.UNAUTHENTICATED);
+      
       SessionLogger.info('auth', 'User signed out successfully');
     } catch (err) {
       SessionLogger.error('auth', 'Error signing out', { error: err });
+      
+      // Force refresh auth state to get accurate status
+      await forceRefreshAuth();
+    } finally {
+      setIsLoading(false);
     }
-  }
-
+  };
+  
+  // Create context value
   const value = {
     user,
     session,
     isLoading,
     signIn,
     signOut,
-    isAuthor
-  }
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+    isAuthor,
+    status,
+    forceRefreshAuth
+  };
+  
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export const useAuth = () => {
-  const context = useContext(AuthContext)
+  const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context
-}
+  return context;
+};

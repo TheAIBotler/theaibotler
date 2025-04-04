@@ -67,6 +67,16 @@ export class SessionService {
   }
 
   /**
+   * Resets the service state (useful for recovery)
+   */
+  public reset(): void {
+    this.isInitialized = false;
+    this.userId = null;
+    // Don't reset sessionId yet - it will be recreated on next getSessionId() call
+    SessionLogger.info('session', 'SessionService reset');
+  }
+
+  /**
    * Gets the current session ID for anonymous users
    */
   public getSessionId(): string {
@@ -100,7 +110,34 @@ export class SessionService {
    * Sets the user ID when authenticated
    */
   public setUserId(userId: string | null): void {
-    this.userId = userId
+    const wasAuthenticated = !!this.userId;
+    const isBecomingAuthenticated = !wasAuthenticated && !!userId;
+    const isBecomingAnonymous = wasAuthenticated && !userId;
+    
+    // Update user ID
+    this.userId = userId;
+    
+    // Log transition for debugging
+    if (isBecomingAuthenticated) {
+      SessionLogger.info('session', 'Transitioning from anonymous to authenticated', {
+        newUserId: userId?.substring(0, 8) + '...'
+      });
+    } else if (isBecomingAnonymous) {
+      SessionLogger.info('session', 'Transitioning from authenticated to anonymous');
+    }
+    
+    // If transitioning from authenticated to anonymous, reset session
+    if (isBecomingAnonymous) {
+      this.isInitialized = false; // Force reinitialization on next getSessionId()
+      SessionLogger.info('session', 'Reset session state due to sign out');
+    }
+    
+    // If transitioning from anonymous to authenticated, ensure proper state
+    if (isBecomingAuthenticated) {
+      // Clear any lingering anonymous session data that might conflict
+      this.sessionId = null;
+      SessionLogger.info('session', 'Cleared anonymous session data for authenticated user');
+    }
   }
 
   /**

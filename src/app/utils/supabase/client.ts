@@ -58,31 +58,109 @@ export const checkIsAuthor = async (): Promise<boolean> => {
       return false;
     }
     
-    SessionLogger.debug('auth', 'Checking if user is an author', { email: user.email });
+    SessionLogger.info('auth', 'Checking if user is an author', { 
+      email: user.email,
+      userId: user.id
+    });
     
     // Check if there's an author with matching email
+    try {
+      // First, log all accessible tables to debug permissions
+      const { data: tablesData, error: tablesError } = await supabase
+        .from('information_schema.tables')
+        .select('table_name')
+        .eq('table_schema', 'public')
+        .limit(20);
+      
+      if (tablesError) {
+        SessionLogger.warn('auth', 'Unable to query schema tables', { error: tablesError });
+      } else {
+        SessionLogger.info('auth', 'Accessible tables', { tables: tablesData });
+      }
+    } catch (schemaError) {
+      SessionLogger.warn('auth', 'Error querying schema', { error: schemaError });
+    }
+
+    // Now try to query the authors table
     const { data, error: authorError } = await supabase
       .from('authors')
-      .select('id')
-      .eq('email', user.email)
-      .single();
+      .select('id, email')
+      .eq('email', user.email);
+    
+    // Log the raw query results for debugging
+    SessionLogger.info('auth', 'Authors query results', { 
+      data,
+      hasError: !!authorError,
+      errorMessage: authorError?.message
+    });
     
     if (authorError) {
-      SessionLogger.warn('auth', 'Error checking author status', { error: authorError });
+      SessionLogger.warn('auth', 'Error checking author status', { 
+        error: authorError,
+        message: authorError.message,
+        code: authorError.code,
+        details: authorError.details
+      });
       return false;
     }
     
-    const isAuthor = !!data;
+    // Check if data exists and is not empty
+    const isAuthor = !!(data && data.length > 0);
     SessionLogger.info('auth', `User ${isAuthor ? 'is' : 'is not'} an author`, { 
-      email: user.email 
+      email: user.email,
+      authorData: data
     });
     
     return isAuthor;
   } catch (error) {
-    SessionLogger.error('auth', 'Unexpected error checking author status', { error });
+    SessionLogger.error('auth', 'Unexpected error checking author status', { 
+      error,
+      message: error instanceof Error ? error.message : String(error)
+    });
     return false;
   }
 }
 
 // Legacy function to maintain compatibility - forwards to the session service
 export { getSessionId } from '@/services/sessionService';
+
+/**
+ * Attempts to recover from session-related errors by resetting session state
+ * and creating a fresh anonymous session if needed.
+ */
+export const recoverFromSessionError = async (): Promise<boolean> => {
+  try {
+    SessionLogger.info('session', 'Attempting to recover from session error');
+    
+    // Import dynamically to avoid circular dependency
+    const { SessionService } = await import('@/services/sessionService');
+    
+    // Reset the session service state
+    SessionService.getInstance().reset();
+    
+    // Check current auth status
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      SessionLogger.error('session', 'Error getting auth session during recovery', { error });
+      return false;
+    }
+    
+    if (session?.user) {
+      // Still authenticated, update the session service
+      SessionLogger.info('session', 'Recovery found authenticated user', { 
+        email: session.user.email 
+      });
+      SessionService.getInstance().setUserId(session.user.id);
+    } else {
+      // Not authenticated, create a new anonymous session
+      SessionLogger.info('session', 'Recovery creating new anonymous session');
+      SessionService.getInstance().createNewSession();
+    }
+    
+    return true;
+  } catch (error) {
+    SessionLogger.error('session', 'Recovery attempt failed', { error });
+    return false;
+  }
+}
