@@ -64,22 +64,7 @@ export const checkIsAuthor = async (): Promise<boolean> => {
     });
     
     // Check if there's an author with matching email
-    try {
-      // First, log all accessible tables to debug permissions
-      const { data: tablesData, error: tablesError } = await supabase
-        .from('information_schema.tables')
-        .select('table_name')
-        .eq('table_schema', 'public')
-        .limit(20);
-      
-      if (tablesError) {
-        SessionLogger.warn('auth', 'Unable to query schema tables', { error: tablesError });
-      } else {
-        SessionLogger.info('auth', 'Accessible tables', { tables: tablesData });
-      }
-    } catch (schemaError) {
-      SessionLogger.warn('auth', 'Error querying schema', { error: schemaError });
-    }
+    // Note: Removed information_schema query attempt as it's not needed and was causing errors
 
     // Now try to query the authors table
     const { data, error: authorError } = await supabase

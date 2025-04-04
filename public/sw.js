@@ -1,25 +1,37 @@
-const CACHE_NAME = 'theaibotler-v1';
+const CACHE_NAME = 'theaibotler-v2'; // Updated cache version
 
-// Assets to cache on install
+// Assets to cache on install - reduced to most essential static assets
 const PRECACHE_ASSETS = [
   '/',
-  '/index.html',
-  '/about',
-  '/tools',
-  '/blog',
-  '/site.webmanifest',
   '/favicon.ico',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
-  '/offline.html',
 ];
 
-// Install event - precache assets
+// Utility function to cache a single asset with error handling
+const cacheAsset = async (cache, asset) => {
+  try {
+    await cache.add(asset);
+    console.log(`Cached asset: ${asset}`);
+    return true;
+  } catch (error) {
+    console.warn(`Failed to cache asset: ${asset}`, error);
+    return false;
+  }
+};
+
+// Install event - precache assets with individual error handling
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_ASSETS))
-      .then(() => self.skipWaiting())
+      .then(async (cache) => {
+        // Try to cache each asset individually, allow some to fail
+        const results = await Promise.all(
+          PRECACHE_ASSETS.map(asset => cacheAsset(cache, asset))
+        );
+        console.log(`Cached ${results.filter(Boolean).length} of ${PRECACHE_ASSETS.length} assets`);
+        return self.skipWaiting();
+      })
   );
 });
 

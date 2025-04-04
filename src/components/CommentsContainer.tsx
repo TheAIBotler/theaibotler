@@ -331,29 +331,33 @@ export default function CommentsContainer({
         return;
       }
       
-      // Check if this is a top-level comment with no replies
+      // Check if this comment has any active (non-deleted) child comments
       const { data: childComments, error: childError } = await supabase
         .from('comments')
-        .select('id')
+        .select('id, is_deleted')
         .eq('parent_id', commentId);
         
       if (childError) {
         console.error('Error checking for child comments:', childError);
+        return;
       }
       
-      // If it's a top-level comment with no replies, hard delete it
-      if (comment.parent_id === null && (!childComments || childComments.length === 0)) {
-        const { error } = await supabase
-          .from('comments')
-          .delete()
-          .eq('id', commentId);
-          
-        if (error) {
-          console.error('Error hard-deleting comment:', error);
-          return;
-        }
-      } else {
-        // Otherwise, soft delete the comment
+      const hasChildren = childComments && childComments.length > 0;
+      const hasActiveChildren = hasChildren && childComments.some(child => !child.is_deleted);
+      
+      console.log('Comment deletion analysis:', {
+        commentId,
+        hasChildren,
+        hasActiveChildren,
+        childCount: childComments?.length || 0,
+        activeChildCount: childComments?.filter(c => !c.is_deleted).length || 0
+      });
+      
+      // CASE 1: Comment is a reply or has active (non-deleted) children - Use soft delete
+      if (comment.parent_id !== null || hasActiveChildren) {
+        console.log('Soft deleting comment:', commentId, 
+          comment.parent_id !== null ? '(is a reply)' : '(has active children)');
+        
         const { error } = await supabase
           .from('comments')
           .update({
@@ -368,6 +372,102 @@ export default function CommentsContainer({
         if (error) {
           console.error('Error soft-deleting comment:', error);
           return;
+        }
+      }
+      // CASE 2: Comment has children but all are soft-deleted - Delete entire thread
+      else if (hasChildren && !hasActiveChildren) {
+        console.log('Hard deleting entire thread with soft-deleted children:', commentId);
+        let hadError = false;
+        
+        // First, delete all child comments
+        for (const child of childComments) {
+          const { error: childDeleteError } = await supabase
+            .from('comments')
+            .delete()
+            .eq('id', child.id);
+          
+          if (childDeleteError) {
+            console.error(`Error deleting child comment ${child.id}:`, childDeleteError);
+            hadError = true;
+            // Continue with other deletions even if one fails
+          }
+        }
+        
+        if (hadError) {
+          console.warn('Some child comments could not be deleted, falling back to soft delete for parent');
+          // Soft delete the parent as fallback
+          const { error } = await supabase
+            .from('comments')
+            .update({
+              is_deleted: true,
+              original_content: comment.content,
+              content: "Comment removed by " + (isAuthor ? "Author" : "poster"),
+              deleted_by: isAuthor ? "author" : "user",
+              commenter_name: isAuthor ? null : "[deleted]"
+            })
+            .eq('id', commentId);
+            
+          if (error) {
+            console.error('Error in fallback soft-delete of parent:', error);
+            return;
+          }
+        } else {
+          // All children deleted successfully, now delete the parent
+          const { error: parentDeleteError } = await supabase
+            .from('comments')
+            .delete()
+            .eq('id', commentId);
+          
+          if (parentDeleteError) {
+            console.error('Error deleting parent comment after deleting children:', parentDeleteError);
+            
+            // Fall back to soft delete if hard delete fails
+            const { error: softError } = await supabase
+              .from('comments')
+              .update({
+                is_deleted: true,
+                original_content: comment.content,
+                content: "Comment removed by " + (isAuthor ? "Author" : "poster"),
+                deleted_by: isAuthor ? "author" : "user",
+                commenter_name: isAuthor ? null : "[deleted]"
+              })
+              .eq('id', commentId);
+              
+            if (softError) {
+              console.error('Error in fallback soft-delete of parent:', softError);
+              return;
+            }
+          }
+        }
+      }
+      // CASE 3: Comment has no children - Can hard delete directly
+      else {
+        console.log('Hard deleting comment with no children:', commentId);
+        const { error } = await supabase
+          .from('comments')
+          .delete()
+          .eq('id', commentId);
+          
+        if (error) {
+          console.error('Error hard-deleting comment:', error);
+          
+          // If hard delete fails, fall back to soft delete
+          console.log('Falling back to soft delete');
+          const { error: softError } = await supabase
+            .from('comments')
+            .update({
+              is_deleted: true,
+              original_content: comment.content,
+              content: "Comment removed by " + (isAuthor ? "Author" : "poster"),
+              deleted_by: isAuthor ? "author" : "user",
+              commenter_name: isAuthor ? null : "[deleted]"
+            })
+            .eq('id', commentId);
+            
+          if (softError) {
+            console.error('Error in fallback soft-delete:', softError);
+            return;
+          }
         }
       }
       
