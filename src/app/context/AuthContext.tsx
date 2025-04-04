@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set up auth state listener
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        // console.log('Auth state changed:', event, session?.user?.email)
+        console.log('Auth state changed:', event, session?.user?.email)
         
         setSession(session)
         setUser(session?.user ?? null)
@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try {
             const isUserAuthor = await checkIsAuthor()
             setIsAuthor(isUserAuthor)
-            // console.log('Author check result:', isUserAuthor)
+            console.log('Author check result:', isUserAuthor)
           } catch (e) {
             console.error('Error checking author status:', e)
             setIsAuthor(false)
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      // console.log('Attempting sign in for:', email)
+      console.log('Attempting sign in for:', email)
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
