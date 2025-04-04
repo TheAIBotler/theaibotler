@@ -1,4 +1,4 @@
-// app/components/CategoryFilter.tsx
+// components/CategoryFilter.tsx
 'use client'
 
 import { useCallback, useMemo } from 'react'

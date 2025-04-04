@@ -1,4 +1,4 @@
-// app/components/SearchInput.tsx
+// components/SearchInput.tsx
 'use client'
 
 import { useCallback, useState, useMemo, useEffect } from 'react'

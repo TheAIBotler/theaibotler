@@ -1,4 +1,4 @@
-// app/components/RelatedPosts.tsx
+// components/RelatedPosts.tsx
 import Image from 'next/image'
 import Link from 'next/link'
 import { urlForImage } from '@/sanity/lib/image'

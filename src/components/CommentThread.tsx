@@ -1,3 +1,4 @@
+// components/CommentThread.tsx
 'use client'
 
 import { useState } from 'react'
