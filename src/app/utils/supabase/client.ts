@@ -27,6 +27,7 @@ export const getSessionId = (): string => {
     let sessionId = localStorage.getItem(SESSION_ID_KEY)
     
     if (!sessionId) {
+      // Generate a new session ID only if one doesn't exist
       sessionId = uuidv4()
       localStorage.setItem(SESSION_ID_KEY, sessionId)
     }
@@ -37,7 +38,6 @@ export const getSessionId = (): string => {
   // Return a placeholder for server-side rendering
   return 'server-side-session'
 }
-
 // Helper to set current session ID in Supabase connection
 export const setSessionContext = async (): Promise<void> => {
   // Check if running in a browser environment
@@ -45,12 +45,39 @@ export const setSessionContext = async (): Promise<void> => {
     const sessionId = getSessionId()
     
     try {
-      await supabase.rpc('set_session_context', {
+      // console.log('Setting session context with ID:', sessionId);
+      
+      const { error } = await supabase.rpc('set_session_context', {
         session_id: sessionId
-      })
+      });
+
+      if (error) {
+        console.error('Error setting session context:', error);
+      }
     } catch (error) {
-      console.error('Error setting session context:', error)
+      console.error('Catch block - Error setting session context:', error)
     }
+  }
+}
+
+// Modified sign out to clear session
+export const customSignOut = async () => {
+  try {
+    // Clear session-related local storage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('commenter_session_id')
+    }
+    
+    // Perform Supabase sign out
+    await supabase.auth.signOut()
+
+    // Explicitly set the new session context after signing out
+    const newSessionId = getSessionId()
+    await supabase.rpc('set_session_context', {
+      session_id: newSessionId
+    })
+  } catch (error) {
+    console.error('Error during sign out:', error)
   }
 }
 

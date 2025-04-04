@@ -2,7 +2,7 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { supabase } from '@/app/utils/supabase/client'
+import { supabase, customSignOut, checkIsAuthor } from '@/app/utils/supabase/client'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 
 interface AuthContextType {
@@ -37,15 +37,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // Check if user is an author by matching email
         if (session?.user?.email) {
-          const { data, error: authorError } = await supabase
-            .from('authors')
-            .select('*')
-            .eq('email', session.user.email)
-            .single()
-          
-          if (data && !authorError) {
-            setIsAuthor(true)
-          }
+          const isUserAuthor = await checkIsAuthor()
+          setIsAuthor(isUserAuthor)
         }
       } catch (e) {
         console.error('Error in auth setup:', e)
@@ -59,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set up auth state listener
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email)
+        // console.log('Auth state changed:', event, session?.user?.email)
         
         setSession(session)
         setUser(session?.user ?? null)
@@ -67,14 +60,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Check if user is an author when auth state changes
         if (session?.user?.email) {
           try {
-            const { data, error: authorError } = await supabase
-              .from('authors')
-              .select('*')
-              .eq('email', session.user.email)
-              .single()
-            
-            setIsAuthor(!!data && !authorError)
-            console.log('Author check result:', !!data, !authorError)
+            const isUserAuthor = await checkIsAuthor()
+            setIsAuthor(isUserAuthor)
+            // console.log('Author check result:', isUserAuthor)
           } catch (e) {
             console.error('Error checking author status:', e)
             setIsAuthor(false)
@@ -94,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('Attempting sign in for:', email)
+      // console.log('Attempting sign in for:', email)
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -110,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut()
+      await customSignOut()
       setIsAuthor(false)
       setUser(null)
       setSession(null)
