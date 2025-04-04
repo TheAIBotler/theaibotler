@@ -3,12 +3,13 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase, getSessionId } from '@/app/utils/supabase/client'
+import { supabase } from '@/app/utils/supabase/client'
 import { CommentWithReplies } from '@/app/utils/supabase/types'
 import CommentThread from './CommentThread'
 import AuthorLogin from './AuthorLogin'
 import { useAuth } from '@/app/context/AuthContext'
 import { Calendar, Clock, ThumbsUp, ArrowDownUp } from 'lucide-react'
+import { SessionService } from '@/services/sessionService'
 
 type SortOption = 'newest' | 'oldest' | 'popular'
 
@@ -28,6 +29,7 @@ export default function CommentsContainer({
   const [sessionInitialized, setSessionInitialized] = useState(false)
   const [sortOption, setSortOption] = useState<SortOption>('newest')
   const [isSorting, setIsSorting] = useState(false)
+  const sessionService = SessionService.getInstance()
 
   // Helper function to sort comments by the given sort option
   const sortComments = useCallback((commentsToSort: CommentWithReplies[], option: SortOption): CommentWithReplies[] => {
@@ -214,13 +216,6 @@ export default function CommentsContainer({
   const refreshComments = useCallback(async () => {
     try {
       setIsSorting(true);
-      
-      // Set session context before fetching
-      if (!user) {
-        await supabase.rpc('set_session_context', {
-          session_id: getSessionId()
-        });
-      }
 
       // Construct the query based on sort option
       let query = supabase
@@ -262,27 +257,14 @@ export default function CommentsContainer({
     } finally {
       setIsSorting(false);
     }
-  }, [postId, sortOption, user, router, organizeCommentsIntoThreads, sortComments]); // Include all dependencies used in the function
+  }, [postId, sortOption, router, organizeCommentsIntoThreads, sortComments]); // Include all dependencies used in the function
 
   // Initialize session when component mounts
   useEffect(() => {
-    const initializeSession = async () => {
-      // Set the session context for anonymous users
-      if (!user) {
-        const sessionId = getSessionId();
-        try {
-          await supabase.rpc('set_session_context', {
-            session_id: sessionId
-          });
-        } catch (error) {
-          console.error('Error setting session context:', error);
-        }
-      }
-      setSessionInitialized(true);
-    };
-
-    initializeSession();
-  }, [user]);
+    // Just initialize the session service and mark as ready
+    const sessionId = sessionService.getSessionId();
+    setSessionInitialized(true);
+  }, []);
 
   // Update sorting when option changes
   useEffect(() => {
@@ -294,14 +276,6 @@ export default function CommentsContainer({
   // Memoize the edit function to avoid recreating it on every render
   const handleEditComment = useCallback(async (commentId: string, newContent: string) => {
     try {
-      // For anonymous users, set session context
-      if (!user) {
-        const sessionId = getSessionId();
-        await supabase.rpc('set_session_context', {
-          session_id: sessionId
-        });
-      }
-      
       // Get current comment to check ownership
       const { data: comment } = await supabase
         .from('comments')
@@ -309,8 +283,8 @@ export default function CommentsContainer({
         .eq('id', commentId)
         .single();
       
-      // For non-authors, check if comment belongs to current session
-      if (!isAuthor && (!comment || comment.session_id !== getSessionId())) {
+      // Use session service to check if user can modify this comment
+      if (!comment || !sessionService.canModifyComment(comment, isAuthor)) {
         console.error('Permission denied: cannot edit this comment');
         return;
       }
@@ -334,19 +308,11 @@ export default function CommentsContainer({
     } catch (err) {
       console.error('Error editing comment:', err);
     }
-  }, [isAuthor, refreshComments, user]);
+  }, [isAuthor, refreshComments]);
 
   // Memoize the delete function to avoid recreating it on every render
   const handleDeleteComment = useCallback(async (commentId: string) => {
     try {
-      // For anonymous users, set session context
-      if (!user) {
-        const sessionId = getSessionId();
-        await supabase.rpc('set_session_context', {
-          session_id: sessionId
-        });
-      }
-      
       // Get current comment to check ownership
       const { data: comment } = await supabase
         .from('comments')
@@ -359,8 +325,8 @@ export default function CommentsContainer({
         return;
       }
       
-      // For non-authors, check if comment belongs to current session
-      if (!isAuthor && comment.session_id !== getSessionId()) {
+      // Use session service to check if user can modify this comment
+      if (!sessionService.canModifyComment(comment, isAuthor)) {
         console.error('Permission denied: cannot delete this comment');
         return;
       }
@@ -410,7 +376,7 @@ export default function CommentsContainer({
     } catch (err) {
       console.error('Error deleting comment:', err);
     }
-  }, [isAuthor, refreshComments, user]);
+  }, [isAuthor, refreshComments]);
 
   // Handler for changing sort option
   const handleSortChange = useCallback((option: SortOption) => {

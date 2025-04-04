@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { ArrowUp, ArrowDown } from 'lucide-react'
 import VoteManager from './VoteManager'
 import { VoteType } from './vote-types'
-import { supabase, getSessionId } from '@/app/utils/supabase/client'
 import { useAuth } from '@/app/context/AuthContext'
+import { SessionService } from '@/services/sessionService'
 
 interface CommentVotingProps {
   commentId: string
@@ -17,6 +17,7 @@ const CommentVoting: React.FC<CommentVotingProps> = ({
   initialDownvotes = 0
 }) => {
   const { user } = useAuth()
+  const sessionService = SessionService.getInstance()
   
   // Calculate initial score
   const initialScore = initialUpvotes - initialDownvotes
@@ -36,7 +37,7 @@ const CommentVoting: React.FC<CommentVotingProps> = ({
 
   // Track user context changes
   useEffect(() => {
-    const currentContext = user ? user.id : getSessionId()
+    const currentContext = user ? user.id : sessionService.getSessionId()
     
     // Reset vote state if user context has changed
     if (lastUserContext && lastUserContext !== currentContext) {
@@ -50,20 +51,9 @@ const CommentVoting: React.FC<CommentVotingProps> = ({
   useEffect(() => {
     const fetchExistingVote = async () => {
       try {
-        const sessionId = user ? user.id : getSessionId()
-        
-        const { data } = await supabase
-          .from('comment_votes')
-          .select('vote_type')
-          .eq('comment_id', commentId)
-          .eq(user ? 'user_id' : 'session_id', sessionId)
-          .single()
-        
-        if (data) {
-          setUserVote(data.vote_type)
-        } else {
-          setUserVote(null)
-        }
+        // Use VoteManager instead of direct API call
+        const voteType = await VoteManager.getUserVote(commentId);
+        setUserVote(voteType);
       } catch (error) {
         console.error('Error fetching existing vote:', error)
         setUserVote(null)

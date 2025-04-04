@@ -1,6 +1,7 @@
 'use client';
 
 import ParticleAnimation from '@/components/ParticleAnimation';
+import SessionDebugPanel from '@/components/SessionDebugPanel';
 import { usePathname } from 'next/navigation';
 
 export default function MarketingLayout({
@@ -29,6 +30,9 @@ export default function MarketingLayout({
         />
       )}
       {children}
+      
+      {/* Add the debug panel - only visible in development mode */}
+      <SessionDebugPanel />
     </div>
   );
 }

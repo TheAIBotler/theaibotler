@@ -2,8 +2,9 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { supabase, getSessionId } from '@/app/utils/supabase/client'
+import { supabase } from '@/app/utils/supabase/client'
 import { useAuth } from '@/app/context/AuthContext'
+import { SessionService } from '@/services/sessionService'
 
 interface CommentFormProps {
   postId: string
@@ -28,14 +29,13 @@ export default function CommentForm({
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuth()
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const sessionService = SessionService.getInstance()
   
-  // Check if we have a name stored in localStorage
+  // Check if we have a name stored
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedName = localStorage.getItem('commenter_name');
-      if (storedName) {
-        setName(storedName);
-      }
+    const storedName = sessionService.getUserName();
+    if (storedName) {
+      setName(storedName);
     }
   }, []);
 
@@ -62,29 +62,11 @@ export default function CommentForm({
     }, 8000) // 8 second timeout
     
     try {
-      const sessionId = getSessionId()
+      const sessionId = sessionService.getSessionId()
       
-      // For non-authors, store the name in localStorage
+      // For non-authors, store the name 
       if (!isAuthor && name.trim()) {
-        localStorage.setItem('commenter_name', name.trim());
-      }
-      
-      // First, set the session context for RLS policies with timeout
-      const contextPromise = supabase.rpc('set_session_context', {
-        session_id: sessionId
-      })
-      
-      // Add a timeout for the RPC call
-      const contextTimeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Setting session context timed out')), 5000);
-      });
-      
-      try {
-        // Race between the actual call and the timeout
-        await Promise.race([contextPromise, contextTimeoutPromise]);
-      } catch (contextError) {
-        console.warn('Session context timeout, attempting to continue anyway:', contextError);
-        // Continue anyway - the RPC might have succeeded even though the client timed out
+        sessionService.setUserName(name.trim());
       }
       
       // Create the comment data object
