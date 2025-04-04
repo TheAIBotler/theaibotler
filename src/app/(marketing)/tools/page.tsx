@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, ExternalLink, Clock } from 'lucide-react';
-import WaitlistModal from '@/components/WaitlistModal';
+import WaitlistModal from '@/components/SimpleWaitlistModal';
 import { Tool } from '@/types';
 
 export default function ToolsPage() {
