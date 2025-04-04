@@ -6,6 +6,8 @@ import { type CommentWithReplies } from '@/app/utils/supabase/types'
 import { formatDistanceToNowStrict } from 'date-fns'
 import Image from 'next/image'
 import CommentForm from './CommentForm'
+import CommentEditHistory from './CommentEditHistory'
+import { getSessionId } from '@/app/utils/supabase/client'
 
 interface CommentThreadProps {
   comments: CommentWithReplies[]
@@ -13,6 +15,8 @@ interface CommentThreadProps {
   postAuthorImage?: string | null
   isAuthor?: boolean
   onCommentAdded: () => void
+  onDeleteComment: (commentId: string) => Promise<void>
+  onEditComment: (commentId: string, newContent: string) => Promise<void>
 }
 
 const CommentThread = ({ 
@@ -20,10 +24,19 @@ const CommentThread = ({
   postId,
   postAuthorImage,
   isAuthor = false,
-  onCommentAdded 
+  onCommentAdded,
+  onDeleteComment,
+  onEditComment
 }: CommentThreadProps) => {
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
+  const [editingComment, setEditingComment] = useState<string | null>(null)
+  const [editText, setEditText] = useState('')
   const [collapsedComments, setCollapsedComments] = useState<Set<string>>(new Set())
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [viewingEditHistory, setViewingEditHistory] = useState<string | null>(null)
+  
+  // Get current session ID for checking own comments
+  const currentSessionId = getSessionId();
   
   // Create a flat map of all comments for easy lookup
   const commentMap = new Map<string, CommentWithReplies>();
@@ -68,18 +81,39 @@ const CommentThread = ({
     return count;
   };
 
+  // Handle edit comment submission
+  const handleEditSubmit = async (commentId: string) => {
+    if (!editText.trim()) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      await onEditComment(commentId, editText.trim());
+      
+      // Exit edit mode
+      setEditingComment(null);
+      setEditText('');
+    } catch (err) {
+      console.error('Error editing comment:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const renderComment = (comment: CommentWithReplies, depth = 0) => {
-    const isAuthorComment = comment.is_author
-    const isReplying = replyingTo === comment.id
-    const isCollapsed = collapsedComments.has(comment.id)
-    const hasReplies = comment.replies && comment.replies.length > 0
-    const totalReplies = hasReplies ? countTotalReplies(comment) : 0
+    const isAuthorComment = comment.is_author;
+    const isReplying = replyingTo === comment.id;
+    const isEditing = editingComment === comment.id;
+    const isCollapsed = collapsedComments.has(comment.id);
+    const hasReplies = comment.replies && comment.replies.length > 0;
+    const totalReplies = hasReplies ? countTotalReplies(comment) : 0;
+    const isOwnComment = comment.session_id === currentSessionId;
     
     // Format time without "about" and with abbreviated units
     let timeAgo = formatDistanceToNowStrict(new Date(comment.created_at), { 
       addSuffix: false,
       roundingMethod: 'floor'
-    })
+    });
     
     // Replace full unit names with abbreviations
     timeAgo = timeAgo
@@ -94,7 +128,7 @@ const CommentThread = ({
       .replace(' months', 'mo')
       .replace(' month', 'mo')
       .replace(' years', 'y')
-      .replace(' year', 'y')
+      .replace(' year', 'y');
     
     return (
       <div key={comment.id} className="relative">
@@ -134,33 +168,109 @@ const CommentThread = ({
           <div className="flex-grow">
             <div className="flex flex-wrap items-center gap-1">
               <span className="font-bold text-gray-900 dark:text-gray-100 text-sm">
-                {isAuthorComment ? 'Author' : comment.commenter_name || 'Anonymous'}
+                {isAuthorComment 
+                  ? 'TheAIBotler' // Hardcoded author name - FUTURE LLMs: This should be dynamically retrieved from the authors table
+                  : comment.commenter_name || 'Anonymous'}
               </span>
+              
+              {isAuthorComment && (
+                <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-1.5 py-0.5 rounded">
+                  Author
+                </span>
+              )}
               
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 • {timeAgo} ago
+                {comment.updated_at !== comment.created_at && (
+                  <span 
+                    className="ml-1 text-xs text-gray-500 dark:text-gray-400 cursor-pointer hover:underline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setViewingEditHistory(comment.id);
+                    }}
+                  >
+                    • edited {formatDistanceToNowStrict(new Date(comment.updated_at), {
+                      addSuffix: false,
+                      roundingMethod: 'floor'
+                    }).replace(/ seconds/g, 's')
+                      .replace(/ second/g, 's')
+                      .replace(/ minutes/g, 'm')
+                      .replace(/ minute/g, 'm')
+                      .replace(/ hours/g, 'h')
+                      .replace(/ hour/g, 'h')
+                      .replace(/ days/g, 'd')
+                      .replace(/ day/g, 'd')
+                      .replace(/ months/g, 'mo')
+                      .replace(/ month/g, 'mo')
+                      .replace(/ years/g, 'y')
+                      .replace(/ year/g, 'y')} ago
+                  </span>
+                )}
               </span>
-              
-              {comment.updated_at !== comment.created_at && (
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  (edited)
-                </span>
-              )}
             </div>
             
-            <div className="text-gray-800 dark:text-gray-200 text-sm break-words mt-1">
-              {comment.content}
-            </div>
+            {isEditing ? (
+              <div className="mt-1 space-y-3">
+                <textarea
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400"
+                  rows={3}
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleEditSubmit(comment.id)}
+                    disabled={isSubmitting}
+                    className="px-3 py-1 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                  >
+                    {isSubmitting ? 'Saving...' : 'Save'}
+                  </button>
+                  <button
+                    onClick={() => setEditingComment(null)}
+                    className="px-3 py-1 text-xs rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-gray-800 dark:text-gray-200 text-sm break-words mt-1">
+                {comment.content}
+              </div>
+            )}
             
-            {/* Reply button */}
-            <div className="mt-1">
-              <button
-                onClick={() => setReplyingTo(isReplying ? null : comment.id)}
-                className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
-              >
-                Reply
-              </button>
-            </div>
+            {/* Action buttons */}
+            {!isEditing && !comment.is_deleted && (
+              <div className="mt-1 flex gap-4">
+                <button
+                  onClick={() => setReplyingTo(isReplying ? null : comment.id)}
+                  className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                >
+                  Reply
+                </button>
+                
+                {/* Show edit/delete buttons for authors or comment owners */}
+                {(isAuthor || isOwnComment) && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setEditingComment(comment.id);
+                        setEditText(comment.content);
+                      }}
+                      className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => onDeleteComment(comment.id)}
+                      className="text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -243,6 +353,14 @@ const CommentThread = ({
         <p className="text-center text-gray-500 dark:text-gray-400 py-8">
           No comments yet. Be the first to comment!
         </p>
+      )}
+
+      {/* Edit history modal */}
+      {viewingEditHistory && (
+        <CommentEditHistory 
+          commentId={viewingEditHistory} 
+          onClose={() => setViewingEditHistory(null)} 
+        />
       )}
     </div>
   )
