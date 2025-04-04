@@ -17,6 +17,11 @@ export default function HomePage() {
           Leveraging AI to solve <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600">real world</span> problems.
         </h1>
         
+        {/* Concise mission statement - NEW SECONDARY LINE */}
+        <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+          I build tools to help you save time and money.
+        </p>
+        
         {/* Clear call-to-action buttons */}
         <div className="pt-6 flex flex-col sm:flex-row gap-4 justify-center">
           <Link 
