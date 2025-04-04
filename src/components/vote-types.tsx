@@ -1,5 +1,5 @@
 // Types for comment voting system
-export type VoteType = 1 | -1;
+export type VoteType = 1 | -1 | null;
 
 export interface CommentVoteEntry {
   upvotes: number;

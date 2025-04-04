@@ -25,7 +25,7 @@ export default function CommentsContainer({
   initialComments 
 }: CommentsContainerProps) {
   const router = useRouter()
-  const { isAuthor, user } = useAuth()
+  const { isAuthor } = useAuth()
   const [sessionInitialized, setSessionInitialized] = useState(false)
   const [sortOption, setSortOption] = useState<SortOption>('newest')
   const [isSorting, setIsSorting] = useState(false)
@@ -261,10 +261,10 @@ export default function CommentsContainer({
 
   // Initialize session when component mounts
   useEffect(() => {
-    // Just initialize the session service and mark as ready
-    const sessionId = sessionService.getSessionId();
+    // Initialize the session service and mark as ready
+    sessionService.getSessionId();
     setSessionInitialized(true);
-  }, []);
+  }, [sessionService]);
 
   // Update sorting when option changes
   useEffect(() => {
@@ -308,7 +308,7 @@ export default function CommentsContainer({
     } catch (err) {
       console.error('Error editing comment:', err);
     }
-  }, [isAuthor, refreshComments]);
+  }, [isAuthor, refreshComments, sessionService]);
 
   // Memoize the delete function to avoid recreating it on every render
   const handleDeleteComment = useCallback(async (commentId: string) => {
@@ -476,7 +476,7 @@ export default function CommentsContainer({
     } catch (err) {
       console.error('Error deleting comment:', err);
     }
-  }, [isAuthor, refreshComments]);
+  }, [isAuthor, refreshComments, sessionService]);
 
   // Handler for changing sort option
   const handleSortChange = useCallback((option: SortOption) => {

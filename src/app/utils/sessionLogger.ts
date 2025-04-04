@@ -1,3 +1,10 @@
+// Add recoveringSession to Window interface
+declare global {
+  interface Window {
+    __recoveringSession?: boolean;
+  }
+}
+
 // app/utils/sessionLogger.ts
 
 // Define log levels and colors for console output
@@ -21,12 +28,17 @@ const LOG_CATEGORIES = {
 type LogLevel = keyof typeof LOG_LEVELS;
 type LogCategory = keyof typeof LOG_CATEGORIES;
 
+// Generic log data type that allows for structured data
+type LogData = Record<string, unknown>;
+
+// Error type that can be used throughout the logger
+
 interface LogEntry {
   timestamp: number;
   level: LogLevel;
   category: LogCategory;
   message: string;
-  data?: any;
+  data?: LogData;
 }
 
 // Storage configuration
@@ -40,6 +52,28 @@ const isDev = process.env.NODE_ENV === 'development';
 export class SessionLogger {
   private static logs: LogEntry[] = [];
   private static enabled = true;
+  
+  // Helper functions for error handling
+  private static getErrorCode(error: unknown): string {
+    // Check if error is an object
+    if (error && typeof error === 'object') {
+      // Try to access the code property
+      const errObj = error as { code?: string };
+      return errObj.code || 'unknown';
+    }
+    return 'unknown';
+  }
+
+  private static getErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    if (error && typeof error === 'object') {
+      const errObj = error as { message?: string };
+      return errObj.message || String(error);
+    }
+    return String(error);
+  }
   
   // Enable or disable logging
   static setEnabled(enabled: boolean): void {
@@ -61,7 +95,7 @@ export class SessionLogger {
         if (storedLogs) {
           this.logs = JSON.parse(storedLogs);
         }
-      } catch (e) {
+      } catch {
         console.warn('Failed to load session logs from storage');
       }
       
@@ -89,7 +123,7 @@ export class SessionLogger {
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(this.logs.slice(-MAX_LOGS)));
-      } catch (e) {
+      } catch {
         console.warn('Failed to save session logs to storage');
       }
     }
@@ -130,13 +164,13 @@ export class SessionLogger {
       URL.revokeObjectURL(url);
       
       this.info('session', 'Logs downloaded', { filename });
-    } catch (e) {
-      console.error('Failed to download logs:', e);
+    } catch {
+      console.error('Failed to download logs:');
     }
   }
   
   // General logging function
-  private static log(level: LogLevel, category: LogCategory, message: string, data?: any): void {
+  private static log(level: LogLevel, category: LogCategory, message: string, data?: LogData): void {
     if (!this.enabled && level === 'debug') return;
     
     const entry: LogEntry = {
@@ -190,28 +224,28 @@ export class SessionLogger {
   }
   
   // Specific logging methods
-  static debug(category: LogCategory, message: string, data?: any): void {
+  static debug(category: LogCategory, message: string, data?: LogData): void {
     this.log('debug', category, message, data);
   }
   
-  static info(category: LogCategory, message: string, data?: any): void {
+  static info(category: LogCategory, message: string, data?: LogData): void {
     this.log('info', category, message, data);
   }
   
-  static warn(category: LogCategory, message: string, data?: any): void {
+  static warn(category: LogCategory, message: string, data?: LogData): void {
     this.log('warn', category, message, data);
   }
   
-  static error(category: LogCategory, message: string, data?: any): void {
+  static error(category: LogCategory, message: string, data?: LogData): void {
     this.log('error', category, message, data);
   }
   
   // Special method for tracking 406 errors
-  static track406Error(source: string, error: any, context?: any): void {
+  static track406Error(source: string, error: unknown, context?: LogData): void {
     this.error('error', `406 Error in ${source}`, {
       source,
-      errorCode: error?.code || 'unknown',
-      errorMessage: error?.message || String(error),
+      errorCode: this.getErrorCode(error),
+      errorMessage: this.getErrorMessage(error),
       errorData: error,
       context
     });
@@ -223,8 +257,8 @@ export class SessionLogger {
         errors406.push({
           timestamp: Date.now(),
           source,
-          errorCode: error?.code || 'unknown',
-          errorMessage: error?.message || String(error),
+          errorCode: this.getErrorCode(error),
+          errorMessage: this.getErrorMessage(error),
           url: window.location.href,
           context
         });
@@ -235,7 +269,7 @@ export class SessionLogger {
         }
         
         localStorage.setItem('session_406_errors', JSON.stringify(errors406));
-      } catch (e) {
+      } catch {
         // Ignore storage errors
       }
     }
@@ -257,7 +291,7 @@ export class SessionLogger {
         // Track this 406 error
         SessionLogger.track406Error('console.error', { 
           message: errorString 
-        }, { args });
+        } as unknown, { args });
         
         // Continue to show in console during development
         if (isDev) {
@@ -288,7 +322,7 @@ export class SessionLogger {
   }
   
   // Track session context operations
-  static trackSessionContext(operation: string, user: any | null, success: boolean, duration: number, error?: any): void {
+  static trackSessionContext(operation: string, user: Record<string, unknown> | null, success: boolean, duration: number, error?: unknown): void {
     const level = success ? 'info' : 'error';
     const message = `Session context ${operation} ${success ? 'succeeded' : 'failed'}`;
     
@@ -313,11 +347,4 @@ export class SessionLogger {
 // Initialize on import if in browser
 if (typeof window !== 'undefined') {
   SessionLogger.init();
-  
-  // Add recoveringSession to Window interface
-  declare global {
-    interface Window {
-      __recoveringSession?: boolean;
-    }
-  }
 }

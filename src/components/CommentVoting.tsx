@@ -45,7 +45,7 @@ const CommentVoting: React.FC<CommentVotingProps> = ({
     }
     
     setLastUserContext(currentContext)
-  }, [user, lastUserContext])
+  }, [user, lastUserContext, sessionService])
 
   // Fetch existing user vote on mount and when user changes
   useEffect(() => {

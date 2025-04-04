@@ -157,7 +157,7 @@ export class SessionService {
   /**
    * Checks if the current user can modify the given comment
    */
-  public canModifyComment(comment: any, isAuthor: boolean): boolean {
+  public canModifyComment(comment: Record<string, unknown>, isAuthor: boolean): boolean {
     // Admin (author) can modify all comments
     if (isAuthor) return true
     

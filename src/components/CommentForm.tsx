@@ -37,7 +37,7 @@ export default function CommentForm({
     if (storedName) {
       setName(storedName);
     }
-  }, []);
+  }, [sessionService]);
 
   // Cleanup timeout on unmount
   useEffect(() => {

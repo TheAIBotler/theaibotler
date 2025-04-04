@@ -1,8 +1,6 @@
 // app/utils/supabase/client.ts
 import { createClient } from '@supabase/supabase-js'
 import { SessionLogger } from '../sessionLogger'
-import { User } from '@supabase/supabase-js'
-import { getSessionId } from '@/services/sessionService'
 
 // Make sure these environment variables are correctly set in your .env.local file
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''

@@ -5,10 +5,28 @@ import { useState, useEffect } from 'react'
 import { SessionLogger } from '@/app/utils/sessionLogger'
 import { SessionService } from '@/services/sessionService'
 
+// Types for the logs and errors
+interface LogEntry {
+  timestamp: number;
+  level: string;
+  category: string;
+  message: string;
+  data?: Record<string, unknown>;
+}
+
+interface Error406Entry {
+  timestamp: number;
+  source: string;
+  errorCode: string;
+  errorMessage: string;
+  url?: string;
+  context?: Record<string, unknown>;
+}
+
 export default function SessionDebugPanel() {
   const [isOpen, setIsOpen] = useState(false)
-  const [logs, setLogs] = useState<any[]>([])
-  const [errors406, setErrors406] = useState<any[]>([])
+  const [logs, setLogs] = useState<LogEntry[]>([])
+  const [errors406, setErrors406] = useState<Error406Entry[]>([])
   const [isRecovering, setIsRecovering] = useState(false)
   
   // Only show in development
@@ -23,7 +41,7 @@ export default function SessionDebugPanel() {
       try {
         const errors = JSON.parse(localStorage.getItem('session_406_errors') || '[]');
         setErrors406(errors);
-      } catch (e) {
+      } catch {
         // Ignore
       }
     };

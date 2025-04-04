@@ -16,7 +16,7 @@ export default function AuthorLogin() {
   const [credentials, setCredentials] = useState({ email: '', password: '' })
   const dropdownRef = useRef<HTMLDivElement>(null)
   
-  const { signIn, signOut, user, isAuthor, forceRefreshAuth, status } = useAuth()
+  const { signIn, signOut, user, isAuthor, forceRefreshAuth } = useAuth()
 
   useEffect(() => {
     setMounted(true)
@@ -70,7 +70,7 @@ export default function AuthorLogin() {
       // Try to refresh auth state to recover
       try {
         await forceRefreshAuth();
-      } catch (refreshErr) {
+      } catch {
         // Ignore refresh errors
       }
     } finally {
@@ -90,7 +90,7 @@ export default function AuthorLogin() {
       // Try to refresh auth state to recover
       try {
         await forceRefreshAuth()
-      } catch (refreshErr) {
+      } catch {
         // Ignore refresh errors
       }
     } finally {
@@ -118,7 +118,7 @@ export default function AuthorLogin() {
             <span className="hidden md:inline text-sm">{isSigningOut ? 'Signing out...' : 'Sign out (non-author)'}</span>
             {showTooltip && !isSigningOut && (
               <div className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-gray-200 text-xs rounded whitespace-nowrap">
-                Sign out (You're logged in but not an author)
+                Sign out (You&apos;re logged in but not an author)
               </div>
             )}
           </button>
