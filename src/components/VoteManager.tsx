@@ -1,4 +1,4 @@
-import { supabase, getSessionId } from '@/app/utils/supabase/client'
+import { supabase, getSessionId, setSessionContext, recoverFromSessionError } from '@/app/utils/supabase/client'
 import { VoteType, CommentVoteEntry, VoteStorageEntry } from './vote-types'
 
 class VoteManager {
@@ -29,12 +29,26 @@ class VoteManager {
     if (commentIds.length === 0) return {};
 
     try {
+      // Ensure session context is set before querying
+      await setSessionContext();
+
       const { data, error } = await supabase
         .from('comments')
         .select('id, upvotes, downvotes, score')
         .in('id', commentIds);
 
-      if (error) throw error;
+      if (error) {
+        // Check if this is a session error (406, 401, etc.)
+        if (error.code === '406' || error.code === '401' || error.code === '42501') {
+          console.log('Session error detected, attempting recovery...');
+          const recovered = await recoverFromSessionError();
+          if (recovered) {
+            // Try again with the new session
+            return this.refreshCommentVotes(commentIds);
+          }
+        }
+        throw error;
+      }
 
       // Update local storage and prepare return object
       const storedVotes = this.getStoredVotes();
@@ -74,19 +88,12 @@ class VoteManager {
     try {
       console.group('Vote Operation');
       
+      // Ensure session context is set before voting
+      await setSessionContext();
+      
       // Log current session context details
       const currentSessionId = getSessionId();
       console.log('Current Session ID:', currentSessionId);
-      
-      // Attempt to get current session context
-      try {
-        const sessionContext = await supabase.rpc('set_session_context', {
-          session_id: currentSessionId
-        });
-        console.log('Session Context Set:', sessionContext);
-      } catch (contextError) {
-        console.error('Error setting session context:', contextError);
-      }
 
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
@@ -110,6 +117,17 @@ class VoteManager {
         .eq(user ? 'user_id' : 'session_id', user ? user.id : currentSessionId);
 
       if (removeError) {
+        // Check if this is a session error
+        if (removeError.code === '406' || removeError.code === '401' || removeError.code === '42501') {
+          console.log('Session error during vote removal, attempting recovery...');
+          const recovered = await recoverFromSessionError();
+          if (recovered) {
+            console.log('Recovery successful, retrying vote operation');
+            console.groupEnd();
+            // Try the whole operation again
+            return this.vote(commentId, voteType);
+          }
+        }
         console.warn('Error removing existing vote:', removeError);
       }
 
@@ -119,6 +137,17 @@ class VoteManager {
         .insert(voteData);
 
       if (error) {
+        // Check if this is a session error
+        if (error.code === '406' || error.code === '401' || error.code === '42501') {
+          console.log('Session error during vote insertion, attempting recovery...');
+          const recovered = await recoverFromSessionError();
+          if (recovered) {
+            console.log('Recovery successful, retrying vote operation');
+            console.groupEnd();
+            // Try the whole operation again
+            return this.vote(commentId, voteType);
+          }
+        }
         console.error('Vote insertion error:', error);
         throw error;
       }
@@ -135,6 +164,9 @@ class VoteManager {
   // Remove vote for a comment
   static async removeVote(commentId: string): Promise<void> {
     try {
+      // Ensure session context is set
+      await setSessionContext();
+      
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -146,6 +178,15 @@ class VoteManager {
         .eq(user ? 'user_id' : 'session_id', user ? user.id : getSessionId());
 
       if (error) {
+        // Check if this is a session error
+        if (error.code === '406' || error.code === '401' || error.code === '42501') {
+          console.log('Session error during vote removal, attempting recovery...');
+          const recovered = await recoverFromSessionError();
+          if (recovered) {
+            // Try again with new session
+            return this.removeVote(commentId);
+          }
+        }
         console.error('Error removing vote:', error);
         throw error;
       }
