@@ -75,11 +75,26 @@ const CommentThread = ({
     const hasReplies = comment.replies && comment.replies.length > 0
     const totalReplies = hasReplies ? countTotalReplies(comment) : 0
     
-    // Format time without "about"
-    const timeAgo = formatDistanceToNowStrict(new Date(comment.created_at), { 
+    // Format time without "about" and with abbreviated units
+    let timeAgo = formatDistanceToNowStrict(new Date(comment.created_at), { 
       addSuffix: false,
       roundingMethod: 'floor'
     })
+    
+    // Replace full unit names with abbreviations
+    timeAgo = timeAgo
+      .replace(' seconds', 's')
+      .replace(' second', 's')
+      .replace(' minutes', 'm')
+      .replace(' minute', 'm')
+      .replace(' hours', 'h')
+      .replace(' hour', 'h')
+      .replace(' days', 'd')
+      .replace(' day', 'd')
+      .replace(' months', 'mo')
+      .replace(' month', 'mo')
+      .replace(' years', 'y')
+      .replace(' year', 'y')
     
     return (
       <div key={comment.id} className="relative">
