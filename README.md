@@ -15,7 +15,7 @@ I'm a developer passionate about making AI accessible and useful for everyone. M
 ### 🧠 AI Experience
 
 - **LLM Models**: Anthropic Claude, Google Gemini, OpenAI ChatGPT
-- **AI Domains**: Prompt engineering, RAG systems, AI agents, MCP
+- **AI Domains**: Prompt engineering, AI agents, MCP
 - **Applications**: Content generation, data analysis, automation workflows
 
 ## 📈 Current Focus
