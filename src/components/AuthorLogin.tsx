@@ -79,22 +79,55 @@ export default function AuthorLogin() {
   };
 
   const handleSignOut = async () => {
+    // Setup timeout to prevent UI getting stuck
+    let signOutTimeoutId: NodeJS.Timeout | null = null;
+    
     try {
-      setIsSigningOut(true)
-      await signOut()
-      setIsOpen(false)
+      // Set signing out state
+      setIsSigningOut(true);
+      
+      // Set a timeout to reset UI state if the process takes too long
+      signOutTimeoutId = setTimeout(() => {
+        SessionLogger.warn('auth', 'Sign out is taking too long, resetting UI state');
+        setIsSigningOut(false);
+      }, 5000); // 5 second timeout
+      
+      // Attempt to sign out
+      await signOut();
+      setIsOpen(false);
+      
+      // Clear the timeout since we completed successfully
+      if (signOutTimeoutId) {
+        clearTimeout(signOutTimeoutId);
+        signOutTimeoutId = null;
+      }
     } catch (err) {
-      console.error('Error signing out:', err)
-      SessionLogger.error('auth', 'Error in signOut handler', { error: err })
+      console.error('Error signing out:', err);
+      SessionLogger.error('auth', 'Error in signOut handler', { error: err });
+      
+      // Clear the timeout since we're handling the error
+      if (signOutTimeoutId) {
+        clearTimeout(signOutTimeoutId);
+        signOutTimeoutId = null;
+      }
       
       // Try to refresh auth state to recover
       try {
-        await forceRefreshAuth()
+        await forceRefreshAuth();
       } catch {
         // Ignore refresh errors
       }
+      
+      // Try to provide visual feedback
+      window.alert('There was a problem signing out. Please try refreshing the page.');
     } finally {
-      setIsSigningOut(false)
+      // Always ensure we reset the UI state
+      setIsSigningOut(false);
+      
+      // Clean up timeout if it's still active
+      if (signOutTimeoutId) {
+        clearTimeout(signOutTimeoutId);
+      }
     }
   }
 

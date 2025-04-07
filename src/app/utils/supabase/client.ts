@@ -2,6 +2,10 @@
 import { createClient } from '@supabase/supabase-js'
 import { SessionLogger } from '../sessionLogger'
 
+// Constants for author status caching
+const AUTHOR_STATUS_KEY = 'author_status_cache'
+const AUTHOR_STATUS_EXPIRY = 24 * 60 * 60 * 1000 // 24 hours in milliseconds
+
 // Make sure these environment variables are correctly set in your .env.local file
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -22,6 +26,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 export const customSignOut = async () => {
   try {
     SessionLogger.info('auth', 'Signing out user');
+    
+    // Clear author status cache immediately to prevent stale data
+    clearCachedAuthorStatus();
     
     // Perform Supabase sign out
     await supabase.auth.signOut();
@@ -56,7 +63,16 @@ export const checkIsAuthor = async (): Promise<boolean> => {
       return false;
     }
     
-    SessionLogger.info('auth', 'Checking if user is an author', { 
+    // Check if we have a valid cached result
+    const cachedStatus = getCachedAuthorStatus(user.email);
+    if (cachedStatus !== null) {
+      SessionLogger.info('auth', `Using cached author status: user ${cachedStatus ? 'is' : 'is not'} an author`, { 
+        email: user.email
+      });
+      return cachedStatus;
+    }
+    
+    SessionLogger.info('auth', 'Checking if user is an author (no cache or expired)', { 
       email: user.email,
       userId: user.id
     });
@@ -94,6 +110,9 @@ export const checkIsAuthor = async (): Promise<boolean> => {
       authorData: data
     });
     
+    // Cache the result for future use
+    setCachedAuthorStatus(user.email, isAuthor);
+    
     return isAuthor;
   } catch (error) {
     SessionLogger.error('auth', 'Unexpected error checking author status', { 
@@ -101,6 +120,90 @@ export const checkIsAuthor = async (): Promise<boolean> => {
       message: error instanceof Error ? error.message : String(error)
     });
     return false;
+  }
+}
+
+// Author status caching functions
+interface AuthorCacheEntry {
+  email: string
+  isAuthor: boolean
+  timestamp: number
+}
+
+/**
+ * Gets cached author status for the given email
+ * @param email User's email
+ * @returns boolean if valid cache exists, null if no cache or expired
+ */
+export const getCachedAuthorStatus = (email: string): boolean | null => {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    const cacheStr = localStorage.getItem(AUTHOR_STATUS_KEY);
+    if (!cacheStr) return null;
+    
+    const cache = JSON.parse(cacheStr) as AuthorCacheEntry;
+    const now = Date.now();
+    
+    // Check if cache is valid and not expired
+    if (
+      cache &&
+      cache.email === email &&
+      cache.timestamp + AUTHOR_STATUS_EXPIRY > now
+    ) {
+      SessionLogger.debug('auth', 'Using cached author status', {
+        email: email.substring(0, 3) + '...', 
+        isAuthor: cache.isAuthor,
+        age: Math.round((now - cache.timestamp) / 60000) + ' minutes'
+      });
+      return cache.isAuthor;
+    }
+    
+    // Clear invalid cache
+    localStorage.removeItem(AUTHOR_STATUS_KEY);
+    return null;
+  } catch (error) {
+    SessionLogger.warn('auth', 'Error reading author status cache', { error });
+    return null;
+  }
+}
+
+/**
+ * Sets the cached author status for a user
+ * @param email User's email
+ * @param isAuthor Whether the user is an author
+ */
+export const setCachedAuthorStatus = (email: string, isAuthor: boolean): void => {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    const cacheEntry: AuthorCacheEntry = {
+      email,
+      isAuthor,
+      timestamp: Date.now()
+    };
+    
+    localStorage.setItem(AUTHOR_STATUS_KEY, JSON.stringify(cacheEntry));
+    SessionLogger.debug('auth', 'Cached author status', { 
+      email: email.substring(0, 3) + '...', 
+      isAuthor 
+    });
+  } catch (error) {
+    SessionLogger.warn('auth', 'Error caching author status', { error });
+  }
+}
+
+/**
+ * Clears the cached author status
+ */
+export const clearCachedAuthorStatus = (): void => {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    localStorage.removeItem(AUTHOR_STATUS_KEY);
+    SessionLogger.debug('auth', 'Cleared author status cache');
+  } catch {
+    // Ignore errors
   }
 }
 

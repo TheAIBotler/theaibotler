@@ -2,7 +2,7 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react'
-import { supabase, customSignOut, checkIsAuthor } from '@/app/utils/supabase/client'
+import { supabase, customSignOut, checkIsAuthor, clearCachedAuthorStatus } from '@/app/utils/supabase/client'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { SessionLogger } from '@/app/utils/sessionLogger'
 import { SessionService } from '@/services/sessionService'
@@ -343,13 +343,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
   
-  // Sign out function
+  // Sign out function with timeout protection
   const signOut = async () => {
+    // Create a promise that will resolve when sign out completes or reject on error
+    const signOutPromise = new Promise<void>(async (resolve, reject) => {
+      try {
+        // Clear cached author status first to prevent stale data
+        clearCachedAuthorStatus();
+        await customSignOut();
+        resolve();
+      } catch (err) {
+        reject(err);
+      }
+    });
+    
+    // Create a timeout promise that will reject after 5 seconds
+    const timeoutPromise = new Promise<void>((_, reject) => {
+      setTimeout(() => reject(new Error('Sign out timed out')), 5000);
+    });
+    
     try {
       SessionLogger.info('auth', 'Signing out user', { email: user?.email });
       setIsLoading(true);
       
-      await customSignOut();
+      // Race the sign out against the timeout
+      await Promise.race([signOutPromise, timeoutPromise]);
       
       // These will be updated by onAuthStateChange, but set them directly too
       setIsAuthor(false);
@@ -359,10 +377,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       SessionLogger.info('auth', 'User signed out successfully');
     } catch (err) {
-      SessionLogger.error('auth', 'Error signing out', { error: err });
+      // Log the error but continue with sign out process
+      SessionLogger.error('auth', 'Error signing out, forcing state reset', { error: err });
       
-      // Force refresh auth state to get accurate status
-      await forceRefreshAuth();
+      // Force state reset even on error
+      setIsAuthor(false);
+      setUser(null);
+      setSession(null);
+      setStatus(AuthStatus.UNAUTHENTICATED);
+      clearCachedAuthorStatus();
+      
+      // Attempt to refresh auth state
+      try {
+        await forceRefreshAuth();
+      } catch (refreshErr) {
+        SessionLogger.error('auth', 'Failed to refresh auth after sign out error', { error: refreshErr });
+      }
     } finally {
       setIsLoading(false);
     }
