@@ -334,7 +334,16 @@ const CommentThread = ({
                   {/* Show delete for own comments or if user is author */}
                   {(isOwnComment || isAuthor) && (
                     <button
-                      onClick={() => onDeleteComment(comment.id)}
+                      onClick={() => {
+                        console.log('Delete button clicked', {
+                          commentId: comment.id,
+                          isOwnComment,
+                          isAuthor,
+                          sessionId: currentSessionId, 
+                          commentSessionId: comment.session_id
+                        });
+                        onDeleteComment(comment.id);
+                      }}
                       className="text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400"
                     >
                       Delete

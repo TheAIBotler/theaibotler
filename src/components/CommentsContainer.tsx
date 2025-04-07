@@ -3,13 +3,14 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/app/utils/supabase/client'
+import { supabase, setSessionContext } from '@/app/utils/supabase/client'
 import { CommentWithReplies } from '@/app/utils/supabase/types'
 import CommentThread from './CommentThread'
 import AuthorLogin from './AuthorLogin'
 import { useAuth } from '@/app/context/AuthContext'
 import { Calendar, Clock, ThumbsUp, ArrowDownUp } from 'lucide-react'
 import { SessionService } from '@/services/sessionService'
+import { SessionLogger } from '@/app/utils/sessionLogger'
 
 type SortOption = 'newest' | 'oldest' | 'popular'
 
@@ -216,6 +217,7 @@ export default function CommentsContainer({
   const refreshComments = useCallback(async () => {
     try {
       setIsSorting(true);
+      SessionLogger.info('comment', 'Refreshing comments', { postId, sortOption });
 
       // Construct the query based on sort option
       let query = supabase
@@ -240,9 +242,14 @@ export default function CommentsContainer({
       const { data: allComments, error } = await query;
 
       if (error) {
-        console.error('Error fetching comments:', error);
+        SessionLogger.error('comment', 'Error fetching comments', { error, postId });
         return;
       }
+
+      SessionLogger.debug('comment', 'Raw comments received from database', { 
+        count: allComments?.length || 0,
+        postId 
+      });
 
       // Organize the flat list of comments into a nested structure
       const organizedComments = organizeCommentsIntoThreads(allComments);
@@ -251,9 +258,16 @@ export default function CommentsContainer({
       const sortedComments = sortComments(organizedComments, sortOption);
       
       setComments(sortedComments);
-      router.refresh(); // For any server components that need refreshing
+      
+      // Force a refresh of server components
+      router.refresh(); 
+      
+      SessionLogger.info('comment', 'Comments refreshed successfully', { 
+        count: sortedComments?.length || 0,
+        postId 
+      });
     } catch (err) {
-      console.error('Error processing comments:', err);
+      SessionLogger.error('comment', 'Error processing comments', { error: err, postId });
     } finally {
       setIsSorting(false);
     }
@@ -313,168 +327,390 @@ export default function CommentsContainer({
   // Memoize the delete function to avoid recreating it on every render
   const handleDeleteComment = useCallback(async (commentId: string) => {
     try {
-      // Get current comment to check ownership
-      const { data: comment } = await supabase
+      // Helper functions for comment operations
+      // =======================================
+      
+      /**
+       * Sets the session context for anonymous users if needed
+       */
+      const setContextIfNeeded = async (): Promise<boolean> => {
+        // Only need to set context for anonymous users
+        if (isAuthor || sessionService.isAuthenticated()) {
+          return true;
+        }
+        
+        const sessionId = sessionService.getSessionId();
+        const contextSet = await setSessionContext(sessionId);
+        
+        if (!contextSet) {
+          SessionLogger.error('comment', 'Failed to set session context for anonymous user', {
+            sessionId: sessionId.substring(0, 8) + '...'
+          });
+          return false;
+        }
+        
+        return true;
+      };
+
+      /**
+       * Checks if a comment is a leaf (has no replies)
+       */
+      const isLeafComment = async (commentId: string): Promise<boolean> => {
+        await setContextIfNeeded();
+        
+        const { data, error } = await supabase
+          .from('comments')
+          .select('id')
+          .eq('parent_id', commentId)
+          .limit(1);
+        
+        if (error) {
+          SessionLogger.error('comment', 'Error checking for replies', { commentId, error });
+          return false; // Assume it's not a leaf on error
+        }
+        
+        return !data || data.length === 0;
+      };
+
+      /**
+       * Checks if all replies to a comment are inactive (soft-deleted)
+       */
+      const hasOnlyInactiveReplies = async (commentId: string): Promise<boolean> => {
+        await setContextIfNeeded();
+        
+        const { data, error } = await supabase
+          .from('comments')
+          .select('id, is_deleted')
+          .eq('parent_id', commentId);
+        
+        if (error) {
+          SessionLogger.error('comment', 'Error checking for active replies', { commentId, error });
+          return false; // Assume it has active replies on error
+        }
+        
+        // No replies means we don't have "only inactive replies"
+        if (!data || data.length === 0) {
+          return false;
+        }
+        
+        // Check if all replies are inactive
+        return data.every(reply => reply.is_deleted);
+      };
+
+      /**
+       * Gets all direct replies to a comment
+       */
+      const getReplies = async (commentId: string): Promise<CommentWithReplies[]> => {
+        await setContextIfNeeded();
+        
+        const { data, error } = await supabase
+          .from('comments')
+          .select('*')
+          .eq('parent_id', commentId);
+        
+        if (error) {
+          SessionLogger.error('comment', 'Error getting replies', { commentId, error });
+          return [];
+        }
+        
+        return data || [];
+      };
+
+      /**
+       * Checks if a comment is soft-deleted
+       */
+      const isCommentSoftDeleted = async (commentId: string): Promise<boolean> => {
+        await setContextIfNeeded();
+        
+        const { data, error } = await supabase
+          .from('comments')
+          .select('is_deleted')
+          .eq('id', commentId)
+          .single();
+        
+        if (error) {
+          SessionLogger.error('comment', 'Error checking if comment is deleted', { commentId, error });
+          return false;
+        }
+        
+        return data && data.is_deleted === true;
+      };
+
+      /**
+       * Cleans up soft-deleted parents with no active children
+       */
+      const cleanupSoftDeletedParents = async (parentId: string): Promise<void> => {
+        if (!parentId) return;
+        
+        await setContextIfNeeded();
+        
+        // Check if parent is soft-deleted
+        const isSoftDeleted = await isCommentSoftDeleted(parentId);
+        if (!isSoftDeleted) {
+          return; // Not soft-deleted, no cleanup needed
+        }
+        
+        // Check if parent has any active children
+        const replies = await getReplies(parentId);
+        const hasActiveChildren = replies.some(reply => !reply.is_deleted);
+        
+        if (!hasActiveChildren) {
+          // No active children, hard delete the parent
+          const { data: parent } = await supabase
+            .from('comments')
+            .select('parent_id')
+            .eq('id', parentId)
+            .single();
+            
+          const grandparentId = parent?.parent_id;
+          
+          // Delete the parent
+          const { error } = await supabase
+            .from('comments')
+            .delete()
+            .eq('id', parentId);
+          
+          if (error) {
+            SessionLogger.error('comment', 'Error cleaning up soft-deleted parent', { 
+              parentId, 
+              error 
+            });
+            return;
+          }
+          
+          SessionLogger.info('comment', 'Cleaned up soft-deleted parent', { parentId });
+          
+          // Continue cleanup for grandparent if needed
+          if (grandparentId) {
+            await cleanupSoftDeletedParents(grandparentId);
+          }
+        }
+      };
+
+      /**
+       * Hard deletes a comment (completely removes it from the database)
+       */
+      const hardDeleteComment = async (commentId: string): Promise<boolean> => {
+        await setContextIfNeeded();
+        
+        // Get the comment's parent_id before deleting it
+        const { data: comment } = await supabase
+          .from('comments')
+          .select('parent_id')
+          .eq('id', commentId)
+          .single();
+        
+        const parentId = comment?.parent_id;
+        
+        // Delete the comment
+        const { error } = await supabase
+          .from('comments')
+          .delete()
+          .eq('id', commentId);
+        
+        if (error) {
+          SessionLogger.error('comment', 'Error hard-deleting comment', { 
+            commentId, 
+            error,
+            errorMessage: error.message,
+            errorCode: error.code 
+          });
+          return false;
+        }
+        
+        SessionLogger.info('comment', 'Hard deleted comment', { commentId });
+        
+        // If this was a child comment, check if we need to clean up its parent
+        if (parentId) {
+          await cleanupSoftDeletedParents(parentId);
+        }
+        
+        return true;
+      };
+
+      /**
+       * Soft deletes a comment (marks as deleted but keeps in database)
+       */
+      const softDeleteComment = async (commentId: string, byAuthor: boolean): Promise<boolean> => {
+        await setContextIfNeeded();
+        
+        // Get current comment data
+        const { data: comment } = await supabase
+          .from('comments')
+          .select('*')
+          .eq('id', commentId)
+          .single();
+        
+        if (!comment) {
+          SessionLogger.error('comment', 'Comment not found for soft delete', { commentId });
+          return false;
+        }
+        
+        // Update data
+        const updateData = {
+          is_deleted: true,
+          original_content: comment.content,
+          content: "Comment removed by " + (byAuthor ? "author" : "poster"),
+          deleted_by: byAuthor ? "author" : "user",
+          commenter_name: byAuthor ? null : "[deleted]"
+        };
+        
+        // Perform update
+        const { data: updated, error } = await supabase
+          .from('comments')
+          .update(updateData)
+          .eq('id', commentId)
+          .select();
+        
+        if (error) {
+          SessionLogger.error('comment', 'Error soft-deleting comment', { 
+            commentId, 
+            error,
+            errorMessage: error.message
+          });
+          return false;
+        }
+        
+        const success = !!updated && updated.length > 0;
+        SessionLogger.info('comment', 'Soft deleted comment', { 
+          commentId,
+          success
+        });
+        
+        return success;
+      };
+
+      /**
+       * Hard deletes a comment and all its replies recursively
+       */
+      const hardDeleteThread = async (commentId: string): Promise<boolean> => {
+        await setContextIfNeeded();
+        
+        // Get parent_id before deleting
+        const { data: comment } = await supabase
+          .from('comments')
+          .select('parent_id')
+          .eq('id', commentId)
+          .single();
+        
+        const parentId = comment?.parent_id;
+        
+        // Get all replies
+        const replies = await getReplies(commentId);
+        
+        // Delete all replies first
+        let success = true;
+        for (const reply of replies) {
+          // Recursively delete reply threads
+          const deleted = await hardDeleteThread(reply.id);
+          if (!deleted) {
+            success = false;
+          }
+        }
+        
+        // Now delete the comment itself
+        const { error } = await supabase
+          .from('comments')
+          .delete()
+          .eq('id', commentId);
+        
+        if (error) {
+          SessionLogger.error('comment', 'Error deleting thread root comment', { 
+            commentId, 
+            error 
+          });
+          success = false;
+        }
+        
+        // If this was a reply, check if we need to clean up its parent
+        if (success && parentId) {
+          await cleanupSoftDeletedParents(parentId);
+        }
+        
+        return success;
+      };
+      
+      // MAIN DELETION LOGIC
+      // ==========================================
+      
+      // Set session context for anonymous users
+      if (!isAuthor && !sessionService.isAuthenticated()) {
+        const contextSet = await setContextIfNeeded();
+        if (!contextSet) {
+          // Continue anyway, but log the issue
+          SessionLogger.warn('comment', 'Proceeding with deletion despite session context error');
+        }
+      }
+      
+      // Get comment to check ownership and state
+      const { data: comment, error } = await supabase
         .from('comments')
         .select('*')
         .eq('id', commentId)
         .single();
       
-      if (!comment) {
-        console.error('Comment not found');
+      if (error || !comment) {
+        SessionLogger.error('comment', 'Comment not found', { commentId, error });
         return;
       }
       
-      // Use session service to check if user can modify this comment
-      if (!sessionService.canModifyComment(comment, isAuthor)) {
-        console.error('Permission denied: cannot delete this comment');
+      // Check permissions
+      const canModify = sessionService.canModifyComment(comment, isAuthor);
+      if (!canModify) {
+        SessionLogger.error('comment', 'Permission denied: cannot delete this comment', { 
+          commentId,
+          isAuthor,
+          userId: sessionService.getUserId(),
+          isAuthenticated: sessionService.isAuthenticated(),
+          sessionId: sessionService.getSessionId().substring(0, 8) + '...'
+        });
         return;
       }
       
-      // Check if this comment has any active (non-deleted) child comments
-      const { data: childComments, error: childError } = await supabase
-        .from('comments')
-        .select('id, is_deleted')
-        .eq('parent_id', commentId);
-        
-      if (childError) {
-        console.error('Error checking for child comments:', childError);
-        return;
-      }
-      
-      const hasChildren = childComments && childComments.length > 0;
-      const hasActiveChildren = hasChildren && childComments.some(child => !child.is_deleted);
-      
-      console.log('Comment deletion analysis:', {
+      SessionLogger.info('comment', 'Starting comment deletion', { 
         commentId,
-        hasChildren,
-        hasActiveChildren,
-        childCount: childComments?.length || 0,
-        activeChildCount: childComments?.filter(c => !c.is_deleted).length || 0
+        isAuthor,
+        deletedByType: isAuthor ? 'author' : 'owner'
       });
       
-      // CASE 1: Comment is a reply or has active (non-deleted) children - Use soft delete
-      if (comment.parent_id !== null || hasActiveChildren) {
-        console.log('Soft deleting comment:', commentId, 
-          comment.parent_id !== null ? '(is a reply)' : '(has active children)');
-        
-        const { error } = await supabase
-          .from('comments')
-          .update({
-            is_deleted: true,
-            original_content: comment.content,
-            content: "Comment removed by " + (isAuthor ? "Author" : "poster"),
-            deleted_by: isAuthor ? "author" : "user",
-            commenter_name: isAuthor ? null : "[deleted]"
-          })
-          .eq('id', commentId);
-          
-        if (error) {
-          console.error('Error soft-deleting comment:', error);
-          return;
-        }
+      // Check if leaf comment (no replies)
+      const isLeaf = await isLeafComment(commentId);
+      
+      // Check if has only inactive replies
+      const hasOnlyInactive = await hasOnlyInactiveReplies(commentId);
+      
+      // Log deletion strategy
+      SessionLogger.info('comment', 'Deletion strategy analysis', {
+        commentId,
+        isLeaf,
+        hasOnlyInactive,
+        parentId: comment.parent_id || null
+      });
+      
+      let success = false;
+      
+      // CASE 1: Leaf comment - hard delete it
+      if (isLeaf) {
+        success = await hardDeleteComment(commentId);
       }
-      // CASE 2: Comment has children but all are soft-deleted - Delete entire thread
-      else if (hasChildren && !hasActiveChildren) {
-        console.log('Hard deleting entire thread with soft-deleted children:', commentId);
-        let hadError = false;
-        
-        // First, delete all child comments
-        for (const child of childComments) {
-          const { error: childDeleteError } = await supabase
-            .from('comments')
-            .delete()
-            .eq('id', child.id);
-          
-          if (childDeleteError) {
-            console.error(`Error deleting child comment ${child.id}:`, childDeleteError);
-            hadError = true;
-            // Continue with other deletions even if one fails
-          }
-        }
-        
-        if (hadError) {
-          console.warn('Some child comments could not be deleted, falling back to soft delete for parent');
-          // Soft delete the parent as fallback
-          const { error } = await supabase
-            .from('comments')
-            .update({
-              is_deleted: true,
-              original_content: comment.content,
-              content: "Comment removed by " + (isAuthor ? "Author" : "poster"),
-              deleted_by: isAuthor ? "author" : "user",
-              commenter_name: isAuthor ? null : "[deleted]"
-            })
-            .eq('id', commentId);
-            
-          if (error) {
-            console.error('Error in fallback soft-delete of parent:', error);
-            return;
-          }
-        } else {
-          // All children deleted successfully, now delete the parent
-          const { error: parentDeleteError } = await supabase
-            .from('comments')
-            .delete()
-            .eq('id', commentId);
-          
-          if (parentDeleteError) {
-            console.error('Error deleting parent comment after deleting children:', parentDeleteError);
-            
-            // Fall back to soft delete if hard delete fails
-            const { error: softError } = await supabase
-              .from('comments')
-              .update({
-                is_deleted: true,
-                original_content: comment.content,
-                content: "Comment removed by " + (isAuthor ? "Author" : "poster"),
-                deleted_by: isAuthor ? "author" : "user",
-                commenter_name: isAuthor ? null : "[deleted]"
-              })
-              .eq('id', commentId);
-              
-            if (softError) {
-              console.error('Error in fallback soft-delete of parent:', softError);
-              return;
-            }
-          }
-        }
+      // CASE 2: Comment has only inactive replies - hard delete the thread
+      else if (hasOnlyInactive) {
+        success = await hardDeleteThread(commentId);
       }
-      // CASE 3: Comment has no children - Can hard delete directly
+      // CASE 3: Comment has active replies - soft delete it
       else {
-        console.log('Hard deleting comment with no children:', commentId);
-        const { error } = await supabase
-          .from('comments')
-          .delete()
-          .eq('id', commentId);
-          
-        if (error) {
-          console.error('Error hard-deleting comment:', error);
-          
-          // If hard delete fails, fall back to soft delete
-          console.log('Falling back to soft delete');
-          const { error: softError } = await supabase
-            .from('comments')
-            .update({
-              is_deleted: true,
-              original_content: comment.content,
-              content: "Comment removed by " + (isAuthor ? "Author" : "poster"),
-              deleted_by: isAuthor ? "author" : "user",
-              commenter_name: isAuthor ? null : "[deleted]"
-            })
-            .eq('id', commentId);
-            
-          if (softError) {
-            console.error('Error in fallback soft-delete:', softError);
-            return;
-          }
-        }
+        success = await softDeleteComment(commentId, isAuthor);
       }
       
-      // Refresh comments after deletion
-      await refreshComments();
+      if (success) {
+        // Refresh the comments list
+        await refreshComments();
+      }
     } catch (err) {
-      console.error('Error deleting comment:', err);
+      SessionLogger.error('comment', 'Unexpected error in comment deletion', { 
+        commentId, 
+        error: err 
+      });
     }
   }, [isAuthor, refreshComments, sessionService]);
 

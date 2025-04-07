@@ -159,13 +159,40 @@ export class SessionService {
    */
   public canModifyComment(comment: Record<string, unknown>, isAuthor: boolean): boolean {
     // Admin (author) can modify all comments
-    if (isAuthor) return true
+    if (isAuthor) {
+      SessionLogger.debug('comment', 'Admin can modify comment', { 
+        commentId: comment.id,
+        isAuthor
+      });
+      return true;
+    }
     
     // If authenticated but not admin, shouldn't happen in current system
-    if (this.isAuthenticated() && !isAuthor) return false
+    if (this.isAuthenticated() && !isAuthor) {
+      SessionLogger.debug('comment', 'Authenticated non-admin user cannot modify comment', { 
+        commentId: comment.id,
+        isAuthenticated: this.isAuthenticated(),
+        isAuthor
+      });
+      return false;
+    }
     
     // Anonymous users can only modify their own comments
-    return comment.session_id === this.getSessionId()
+    const currentSessionId = this.getSessionId();
+    
+    // Log the raw values without truncation for debugging
+    SessionLogger.debug('comment', 'Raw session comparison for debugging', {
+      currentSessionId: currentSessionId,
+      commentSessionId: comment.session_id,
+      isMatch: comment.session_id === currentSessionId,
+      commentId: comment.id,
+      commentSessionIdType: typeof comment.session_id,
+      currentSessionIdType: typeof currentSessionId
+    });
+    
+    // Direct comparison as done in CommentThread.tsx
+    // This matches how the UI determines ownership
+    return comment.session_id === currentSessionId;
   }
 
   /**

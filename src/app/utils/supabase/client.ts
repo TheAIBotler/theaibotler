@@ -211,6 +211,37 @@ export const clearCachedAuthorStatus = (): void => {
 export { getSessionId } from '@/services/sessionService';
 
 /**
+ * Sets the session context in Supabase's PostgreSQL session
+ * This is required for RLS policies to work for anonymous users
+ * @param sessionId The session ID to set in the context
+ * @returns Promise<boolean> indicating success or failure
+ */
+export const setSessionContext = async (sessionId: string): Promise<boolean> => {
+  try {
+    // Call the RPC function to set the session context
+    const { error } = await supabase.rpc('set_session_context', {
+      session_id: sessionId
+    });
+    
+    if (error) {
+      SessionLogger.error('session', 'Error setting session context', { 
+        error, 
+        sessionId: sessionId.substring(0, 8) + '...' 
+      });
+      return false;
+    }
+    
+    SessionLogger.debug('session', 'Session context set successfully', { 
+      sessionId: sessionId.substring(0, 8) + '...' 
+    });
+    return true;
+  } catch (error) {
+    SessionLogger.error('session', 'Unexpected error setting session context', { error });
+    return false;
+  }
+};
+
+/**
  * Attempts to recover from session-related errors by resetting session state
  * and creating a fresh anonymous session if needed.
  */
