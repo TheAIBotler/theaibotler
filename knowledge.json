@@ -1,0 +1,1763 @@
+{
+  "entities": [
+    {
+      "type": "entity",
+      "name": "406 Error Issue",
+      "entityType": "Bug",
+      "observations": [
+        "Intermittent 406 'Not Acceptable' errors occurring in comments and login system",
+        "Affects anonymous users and authenticated users differently",
+        "Refreshing the browser tab doesn't consistently solve the issue",
+        "Forces the user to use a different browser as a workaround",
+        "Related to calls to supabase.rpc('set_session_context') function"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Session Context Handling",
+      "entityType": "Component",
+      "observations": [
+        "Responsible for setting session context in Supabase",
+        "Used for tracking anonymous users in the commenting system",
+        "Previous implementation didn't differentiate between authenticated and anonymous users",
+        "Original implementation attempted to set session context for all users, causing conflicts"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Tab Visibility Handling",
+      "entityType": "Component",
+      "observations": [
+        "Triggered when a user switches tabs and returns to the site",
+        "Attempts to refresh connections and sessions",
+        "Previous implementation didn't handle authenticated users correctly",
+        "Called setSessionContext() regardless of authentication status",
+        "Logged minimal information about success/failure"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Authenticated User Session",
+      "entityType": "Component",
+      "observations": [
+        "Used JWT tokens for authentication",
+        "Managed by Supabase Auth system",
+        "Should not use anonymous session ID mechanism",
+        "Conflicts occurred when anonymous session context was set for authenticated users"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Anonymous User Session",
+      "entityType": "Component",
+      "observations": [
+        "Relies on custom generated session IDs stored in localStorage",
+        "Used for tracking anonymous commenters",
+        "Session context needed to be set via RPC calls",
+        "Previous error handling was minimal and often triggered page reloads"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Error Logging System",
+      "entityType": "Component",
+      "observations": [
+        "Previous implementation had minimal logging",
+        "Console logs lacked context and structure",
+        "No special handling for 406 errors",
+        "No persistence or ability to analyze error patterns"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Session Context Conflict",
+      "entityType": "RootCause",
+      "observations": [
+        "Setting anonymous session context for authenticated users caused conflicts",
+        "Same RPC function used for all users without checking authentication status",
+        "406 errors occurred when session contexts clashed"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Connection Pool Issues",
+      "entityType": "RootCause",
+      "observations": [
+        "Supabase likely uses database connection pooling",
+        "Session variables set on one connection may not be available on another",
+        "Tab switching might trigger new connections without proper context"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Race Conditions",
+      "entityType": "RootCause",
+      "observations": [
+        "Multiple components tried to set session context simultaneously",
+        "No mutex or locking mechanism to prevent concurrent calls",
+        "Concurrent calls could interfere with each other"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Inadequate Error Recovery",
+      "entityType": "RootCause",
+      "observations": [
+        "Initial recovery mechanism relied on page reloads",
+        "No proper retry logic with exponential backoff",
+        "Users had no visibility into errors or recovery options",
+        "No tracking of failure counts or patterns"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "SessionLogger Implementation",
+      "entityType": "Solution",
+      "observations": [
+        "Comprehensive logging utility for tracking all session operations",
+        "Special handling and tracking for 406 errors",
+        "Categories and levels for different types of logs",
+        "Persistence to localStorage for debugging",
+        "Support for downloading logs for support",
+        "Global error handler to catch uncaught 406 errors"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Enhanced Session Context Management",
+      "entityType": "Solution",
+      "observations": [
+        "Authentication-aware session context setting",
+        "Skip setting session context for authenticated users",
+        "Proper retry logic with exponential backoff",
+        "Session state tracking in localStorage",
+        "Automatic creation of new session IDs after multiple failures",
+        "Detailed logging of all operations and their success/failure"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Improved Tab Visibility Handling",
+      "entityType": "Solution",
+      "observations": [
+        "Different code paths for authenticated vs. anonymous users",
+        "Clear logging of session refresh operations",
+        "Proper error handling and fallback mechanisms",
+        "Performance tracking for all operations",
+        "Skip unnecessary session context setting for authenticated users"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Debug Panel",
+      "entityType": "Solution",
+      "observations": [
+        "Real-time monitoring of 406 errors and session operations",
+        "Only visible in development mode",
+        "Manual recovery functionality",
+        "Log downloading and clearing",
+        "Detailed error information and context",
+        "Filtering to focus on relevant logs"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "theaibotler Website",
+      "entityType": "Project",
+      "observations": [
+        "Next.js-based website with blog and tools sections",
+        "Uses Supabase for authentication and database",
+        "Features commenting system for blog posts",
+        "Allows both anonymous and authenticated commenting",
+        "Uses RLS policies in Supabase for security"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Comment System Files",
+      "entityType": "CodeFiles",
+      "observations": [
+        "src/components/CommentForm.tsx - For submitting comments",
+        "src/components/CommentThread.tsx - For displaying comments",
+        "src/components/CommentsContainer.tsx - Container component",
+        "src/components/CommentVoting.tsx - For voting functionality",
+        "Uses Supabase for data storage and retrieval"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Authentication Files",
+      "entityType": "CodeFiles",
+      "observations": [
+        "src/app/context/AuthContext.tsx - Authentication context provider",
+        "src/components/AuthorLogin.tsx - UI for login form",
+        "src/app/utils/supabase/client.ts - Supabase client configuration"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Solution Implementation",
+      "entityType": "Implementation",
+      "observations": [
+        "Created src/app/utils/sessionLogger.ts for comprehensive logging",
+        "Updated src/app/utils/supabase/client.ts to be authentication-aware",
+        "Modified src/app/context/AuthContext.tsx for better tab visibility handling",
+        "Created src/components/SessionDebugPanel.tsx for monitoring and debugging",
+        "Updated src/app/(marketing)/layout.tsx to include debug panel",
+        "All changes are client-side only with no impact on Supabase backend"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Supabase RPC",
+      "entityType": "Technology",
+      "observations": [
+        "Remote Procedure Call mechanism in Supabase",
+        "Used to execute functions on the Supabase backend",
+        "The set_session_context function was being called via RPC",
+        "406 errors originated from this RPC call when conflicts occurred"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Local Storage",
+      "entityType": "Technology",
+      "observations": [
+        "Browser storage mechanism",
+        "Used to store session IDs for anonymous users",
+        "Persists across page reloads but not across browsers",
+        "Part of the solution involves better state tracking in localStorage"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Tab Visibility API",
+      "entityType": "Technology",
+      "observations": [
+        "Browser API to detect when tabs become visible/hidden",
+        "Used to trigger connection refresh when a user returns to the site",
+        "Previous implementation didn't differentiate user types",
+        "New implementation adds separate code paths and better logging"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "src/app/utils/sessionLogger.ts",
+      "entityType": "File",
+      "observations": [
+        "Created to provide comprehensive logging",
+        "Formats and categorizes logs for better readability",
+        "Tracks 406 errors specifically",
+        "Implements global error handler to catch console errors",
+        "Supports persistence to localStorage"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "src/components/SessionDebugPanel.tsx",
+      "entityType": "File",
+      "observations": [
+        "Provides UI for monitoring session operations",
+        "Only visible in development mode",
+        "Allows manual recovery and log downloading",
+        "Displays 406 errors prominently",
+        "Filters logs to show relevant information"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Original setSessionContext Function",
+      "entityType": "CodeComponent",
+      "observations": [
+        "Called the same RPC function for all users",
+        "Lacked proper error handling",
+        "Used page reload as recovery mechanism",
+        "Minimal logging that made debugging difficult"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Enhanced setSessionContext Function",
+      "entityType": "CodeComponent",
+      "observations": [
+        "Checks authentication status before setting context",
+        "Implements proper retry logic with exponential backoff",
+        "Tracks session state in localStorage",
+        "Provides detailed logging throughout the process",
+        "Returns boolean success/failure for better error handling"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Tab Switching Authentication Issue",
+      "entityType": "Bug",
+      "observations": [
+        "Users unable to sign out, delete comments, or post after switching tabs while logged in",
+        "Multiple 'Signing out user' messages appear in logs when switching tabs",
+        "Related to auth token validation issues after tab visibility changes",
+        "Refreshing browser tab sometimes helps but is inconsistent",
+        "Not directly related to the 406 errors, but also affects authenticated users"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Robust Auth State Management",
+      "entityType": "Solution",
+      "observations": [
+        "Implemented enum-based auth status tracking (LOADING, AUTHENTICATED, UNAUTHENTICATED, ERROR)",
+        "Added synchronization mechanisms between AuthContext and SessionService",
+        "Periodic verification of auth state while page is visible",
+        "Explicit error recovery with forceRefreshAuth() method",
+        "Debounced handlers to prevent race conditions"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Simplified Tab Visibility Handler",
+      "entityType": "Solution",
+      "observations": [
+        "Removed aggressive session refreshing on tab visibility change",
+        "Simple auth state verification instead of direct session manipulation",
+        "Added concurrency protection with visibilityChangeInProgress ref",
+        "Debounced handler to prevent multiple rapid invocations",
+        "Minimizes direct interaction with authentication tokens"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Authenticated State Recovery",
+      "entityType": "Solution",
+      "observations": [
+        "Exposed forceRefreshAuth() method for components to use when auth operations fail",
+        "Components can trigger manual auth state refresh when they detect issues",
+        "Visual feedback during authentication operations (showing 'Signing out...')",
+        "Better preservation of authenticated state during transient errors",
+        "Improved cleanup during component unmount"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "src/services/sessionService.ts",
+      "entityType": "File",
+      "observations": [
+        "Added reset() method for better recovery",
+        "Modified setUserId() to handle transitions between authenticated and anonymous states",
+        "Added 30-day expiration for anonymous sessions",
+        "Explicit initialization check to prevent multiple initializations",
+        "Main singleton service for session management"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "AuthStatus Enum",
+      "entityType": "CodeComponent",
+      "observations": [
+        "Defines states: LOADING, AUTHENTICATED, UNAUTHENTICATED, ERROR",
+        "Provides explicit tracking of authentication state",
+        "Used to drive UI rendering and permission checks",
+        "Helps avoid invalid intermediate states"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "useAuth Hook",
+      "entityType": "CodeComponent",
+      "observations": [
+        "Provides access to authentication context throughout application",
+        "Now includes forceRefreshAuth for manual auth state recovery",
+        "Exposes authentication status enum for more precise state checks",
+        "Used by all components that need authentication information"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Session Expiration",
+      "entityType": "Feature",
+      "observations": [
+        "Anonymous sessions expire after 30 days of inactivity",
+        "Added to reduce stale session accumulation",
+        "Implemented in the SessionService",
+        "Automatically extends expiration when session is actively used",
+        "New sessions created with fresh expiration dates"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "SessionService Implementation",
+      "entityType": "Component",
+      "observations": [
+        "Singleton service for managing session state",
+        "Handles both anonymous and authenticated users",
+        "Maintains session IDs and user information",
+        "Provides methods for checking authentication status",
+        "Supports transitioning between authenticated and anonymous states"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Compilation Errors",
+      "entityType": "Bug",
+      "observations": [
+        "Multiple TypeScript and ESLint errors preventing successful compilation",
+        "Issues across multiple files in the codebase",
+        "Primarily related to type safety and code style issues",
+        "Errors did not prevent the application from running but blocked production builds"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "TypeScript Type Errors",
+      "entityType": "Bug",
+      "observations": [
+        "Usage of 'any' type throughout the codebase",
+        "Property access on potentially undefined objects",
+        "Missing type definitions for error objects",
+        "Mismatch between defined types and actual usage patterns",
+        "Type error in VoteManager with null not being assignable to VoteType"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "ESLint Unused Variable Warnings",
+      "entityType": "Bug",
+      "observations": [
+        "Variables defined but never used (e.g., _e, _refreshErr)",
+        "Imported modules not being used in the code",
+        "State variables defined but not referenced",
+        "Catch clause variables not being used in error handling"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "React Hook Dependency Warnings",
+      "entityType": "Bug",
+      "observations": [
+        "Missing dependencies in useEffect and useCallback hooks",
+        "Potential stale closures due to incomplete dependency arrays",
+        "SessionService not included in hook dependencies",
+        "Inconsistent effect triggering due to missing dependencies"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Service Worker Cache Error",
+      "entityType": "Bug",
+      "observations": [
+        "Failed to execute 'addAll' on 'Cache': Request failed",
+        "All-or-nothing caching approach failing when any resource was unavailable",
+        "Missing or unavailable resources in the precache list",
+        "Errors in service worker preventing proper cache initialization"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "TypeScript Type Safety Improvements",
+      "entityType": "Solution",
+      "observations": [
+        "Created specific types to replace 'any' (LogData, LoggableError)",
+        "Added helper methods for safe property access on unknown objects",
+        "Implemented proper error handling with type guards",
+        "Updated VoteType to include null as valid value",
+        "Fixed Window interface extension for global objects",
+        "Applied more specific type definitions across the codebase"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "ESLint Warning Resolutions",
+      "entityType": "Solution",
+      "observations": [
+        "Removed unused variable declarations",
+        "Used empty catch blocks instead of unused variables",
+        "Removed unused imports and state variables",
+        "Prefixed intentionally unused variables with underscore",
+        "Utilized all imported components and hooks"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "React Hook Dependency Fixes",
+      "entityType": "Solution",
+      "observations": [
+        "Added SessionService to useEffect and useCallback dependency arrays",
+        "Ensured all used variables are included in dependency arrays",
+        "Fixed potential stale closure issues in callbacks",
+        "Aligned effect dependencies with React Hook rules"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Service Worker Caching Strategy",
+      "entityType": "Solution",
+      "observations": [
+        "Created individual asset caching with error handling",
+        "Reduced precached assets to essential files only",
+        "Added version increment to clear problematic caches",
+        "Implemented detailed logging of caching success/failure",
+        "Added fallback mechanisms for cache failures"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Modified SessionLogger",
+      "entityType": "CodeComponent",
+      "observations": [
+        "Enhanced with proper TypeScript types",
+        "Added helper methods for error property access",
+        "Fixed global window interface extension",
+        "Improved error handling and type safety",
+        "Removed usage of 'any' types"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "public/sw.js",
+      "entityType": "File",
+      "observations": [
+        "Service worker implementation for the website",
+        "Modified to use individual caching instead of addAll",
+        "Updated cache version to theaibotler-v2",
+        "Reduced precached assets list",
+        "Added more robust error handling"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "VoteType Definition",
+      "entityType": "CodeComponent",
+      "observations": [
+        "Updated in vote-types.tsx",
+        "Changed from '1 | -1' to '1 | -1 | null'",
+        "Fixed type error in VoteManager",
+        "Properly typed the vote state"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "recoverFromSessionError Function",
+      "entityType": "CodeComponent",
+      "observations": [
+        "Added to src/app/utils/supabase/client.ts",
+        "Handles session error recovery",
+        "Detects and responds to authentication state",
+        "Creates new anonymous sessions when appropriate",
+        "Supports graceful error recovery"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Compilation and Runtime Bug Fixes",
+      "entityType": "Implementation",
+      "observations": [
+        "Comprehensive fixes for TypeScript type errors throughout codebase",
+        "Resolution of ESLint warnings and React hook dependency issues",
+        "Service worker caching improvements for better reliability",
+        "Enhanced comment deletion logic for complex thread scenarios",
+        "Missing session recovery function implementation",
+        "VoteType definition correction for proper null handling",
+        "Collectively enables successful production build and deployment"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Author Status Persistence Issue",
+      "entityType": "Bug",
+      "observations": [
+        "Users appear logged in but not as author when opening a new tab",
+        "Sign-out functionality doesn't work in the inconsistent state",
+        "Authentication token transfers to new tabs but author status doesn't",
+        "Creates a confusing half-authenticated state for users",
+        "Different from tab switching - occurs when opening completely new tabs"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Author Status Caching",
+      "entityType": "Solution",
+      "observations": [
+        "Caches author status in localStorage with 24-hour expiration",
+        "Checks cache before querying database for author status",
+        "Includes email, isAuthor status, and timestamp",
+        "Clears cache when signing out",
+        "Enhances performance by reducing database queries"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Enhanced Sign-out Mechanism",
+      "entityType": "Solution",
+      "observations": [
+        "Implements timeout protection to prevent UI getting stuck",
+        "Uses Promise.race with 5-second timeout",
+        "Forces state reset even when sign-out encounters errors",
+        "Clears cached authentication data on sign-out",
+        "Provides better visual feedback during sign-out process"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Cross-Tab Authentication Improvement",
+      "entityType": "Solution",
+      "observations": [
+        "Fixes issue with inconsistent authentication state in new tabs",
+        "Maintains complete author status across tabs",
+        "Ensures sign-out works reliably in all states",
+        "Balances security with usability in authentication persistence",
+        "Uses simple caching instead of complex cross-tab communication"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Comment Deletion Issues",
+      "entityType": "Bug",
+      "observations": [
+        "Anonymous users couldn't delete any comments due to missing session context",
+        "Admin users could only delete standalone comments but not comments with children",
+        "Parent comments weren't properly cleaned up when all active children were deleted",
+        "Leaf comments (with no replies) were soft-deleted instead of hard-deleted",
+        "Thread removal didn't work for anonymous or authenticated users",
+        "Required a completely redesigned modular approach for proper deletion"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Enhanced Comment Deletion Logic",
+      "entityType": "Solution",
+      "observations": [
+        "Implemented modular functions with clear single responsibilities",
+        "Proper handling of session context for anonymous users",
+        "Recursive approach for deleting entire comment threads",
+        "Chain reaction for cleaning up soft-deleted parents",
+        "Different strategies based on comment state (leaf, thread with inactive replies, comments with active replies)",
+        "Consistent logging throughout the process",
+        "Same algorithm for both anonymous and authenticated users",
+        "Uses a modular approach with specialized functions for different operations",
+        "Proper recursive handling of nested comment threads of any depth",
+        "Different strategies based on comment type: leaf, thread with inactive replies, comment with active replies",
+        "Consistent algorithm for both anonymous and authenticated users",
+        "Chain reaction cleanup for soft-deleted parents with no active children"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Enhanced Comment Deletion",
+      "entityType": "CodeComponent",
+      "observations": [
+        "Implemented in CommentsContainer.tsx",
+        "Includes specialized functions like isLeafComment and cleanupSoftDeletedParents",
+        "Proper session context setting for anonymous users",
+        "Three strategies: hard delete for leaf comments, hard delete thread for inactive replies, soft delete for active replies",
+        "Improved error handling with detailed logging",
+        "Recursive clean-up of soft-deleted parents"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "SessionContext RLS Requirements",
+      "entityType": "RootCause",
+      "observations": [
+        "RLS policies required session context to be set via 'set_session_context' RPC",
+        "Anonymous users couldn't delete comments without session context being set",
+        "Different RLS policies for DELETE vs UPDATE operations",
+        "Missing call to set context before operations on comments",
+        "Required explicit session context setting before each database operation"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Modular Comment Operations",
+      "entityType": "CodeComponent",
+      "observations": [
+        "Collection of specialized functions for comment operations",
+        "Each function has a single responsibility",
+        "Includes isLeafComment, hasOnlyInactiveReplies, cleanupSoftDeletedParents",
+        "Handles its own session context setting",
+        "Allows for clear, maintainable deletion logic",
+        "Supports recursive operations on comment threads"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Recursive Comment Thread Cleanup",
+      "entityType": "Feature",
+      "observations": [
+        "Automatically removes soft-deleted parents when their last active child is deleted",
+        "Chain reaction continues upward through the comment thread hierarchy",
+        "Prevents orphaned soft-deleted comments from cluttering the database",
+        "Implemented through cleanupSoftDeletedParents recursive function",
+        "Works for both anonymous and authenticated user deletions"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Comment State Classification",
+      "entityType": "CodeComponent",
+      "observations": [
+        "Classifies comments based on their reply status",
+        "Identifies leaf comments (no replies) for hard deletion",
+        "Detects comments with only inactive (soft-deleted) replies for thread deletion",
+        "Identifies comments with active replies for soft deletion",
+        "Implemented through functions like isLeafComment and hasOnlyInactiveReplies",
+        "Enables proper deletion strategy selection"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Anonymous Voting Issue",
+      "entityType": "Bug",
+      "observations": [
+        "401 Unauthorized errors when anonymous users try to vote on comments",
+        "Console errors: 'new row violates row-level security policy for table comment_votes'",
+        "Began occurring after the 406 error issue fixes were implemented",
+        "Error appears during both upvoting and downvoting for anonymous users",
+        "Authenticated users could still vote without issues"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Missing Session Context for Anonymous Voting",
+      "entityType": "RootCause",
+      "observations": [
+        "VoteManager methods didn't set session context before database operations",
+        "406 error fixes made session context setting skip authenticated users, but dependencies on this behavior weren't updated",
+        "RLS policies for comment_votes table require session context for anonymous users",
+        "Previously, session context was likely being set globally or by other means",
+        "Session context variable in PostgreSQL wasn't matching the session_id in vote records"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "Session Context for Anonymous Voting",
+      "entityType": "Solution",
+      "observations": [
+        "Added explicit session context setting for anonymous users in voting methods",
+        "Used isAuthenticated() check to only set context for anonymous users",
+        "Modified vote, removeVote, and getUserVote methods in VoteManager",
+        "Used dynamic imports to avoid circular dependencies",
+        "Preserved the authentication-aware session context pattern introduced in 406 error fixes"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "VoteManager",
+      "entityType": "CodeComponent",
+      "observations": [
+        "Handles voting operations for both anonymous and authenticated users",
+        "Manages local storage caching of votes for better performance",
+        "Provides methods for voting, un-voting, and retrieving vote status",
+        "Located in src/components/VoteManager.tsx",
+        "Interacts with the comment_votes table in Supabase"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "VoteManager Session Context Fix",
+      "entityType": "CodeComponent",
+      "observations": [
+        "Added conditional session context setting in vote, removeVote, and getUserVote methods",
+        "Used dynamic import of setSessionContext to avoid circular dependencies",
+        "Only sets session context for anonymous users (when !isAuthenticated)",
+        "Implemented before Supabase database operations",
+        "Preserves local storage optimistic updates pattern"
+      ]
+    },
+    {
+      "type": "entity",
+      "name": "CommentVoting.tsx",
+      "entityType": "File",
+      "observations": [
+        "Component for upvoting and downvoting comments",
+        "Located in src/components/CommentVoting.tsx",
+        "Uses VoteManager for database operations",
+        "Provides visual UI for vote buttons and score",
+        "Handles optimistic UI updates"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "type": "relation",
+      "from": "406 Error Issue",
+      "to": "Session Context Handling",
+      "relationType": "affects"
+    },
+    {
+      "type": "relation",
+      "from": "406 Error Issue",
+      "to": "Tab Visibility Handling",
+      "relationType": "affects"
+    },
+    {
+      "type": "relation",
+      "from": "406 Error Issue",
+      "to": "Authenticated User Session",
+      "relationType": "affects"
+    },
+    {
+      "type": "relation",
+      "from": "406 Error Issue",
+      "to": "Anonymous User Session",
+      "relationType": "affects"
+    },
+    {
+      "type": "relation",
+      "from": "Session Context Conflict",
+      "to": "406 Error Issue",
+      "relationType": "causes"
+    },
+    {
+      "type": "relation",
+      "from": "Connection Pool Issues",
+      "to": "406 Error Issue",
+      "relationType": "causes"
+    },
+    {
+      "type": "relation",
+      "from": "Race Conditions",
+      "to": "406 Error Issue",
+      "relationType": "causes"
+    },
+    {
+      "type": "relation",
+      "from": "Inadequate Error Recovery",
+      "to": "406 Error Issue",
+      "relationType": "exacerbates"
+    },
+    {
+      "type": "relation",
+      "from": "SessionLogger Implementation",
+      "to": "Error Logging System",
+      "relationType": "replaces"
+    },
+    {
+      "type": "relation",
+      "from": "SessionLogger Implementation",
+      "to": "406 Error Issue",
+      "relationType": "helps diagnose"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced Session Context Management",
+      "to": "Session Context Handling",
+      "relationType": "improves"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced Session Context Management",
+      "to": "Session Context Conflict",
+      "relationType": "resolves"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced Session Context Management",
+      "to": "Race Conditions",
+      "relationType": "mitigates"
+    },
+    {
+      "type": "relation",
+      "from": "Improved Tab Visibility Handling",
+      "to": "Tab Visibility Handling",
+      "relationType": "enhances"
+    },
+    {
+      "type": "relation",
+      "from": "Improved Tab Visibility Handling",
+      "to": "Authenticated User Session",
+      "relationType": "correctly manages"
+    },
+    {
+      "type": "relation",
+      "from": "Improved Tab Visibility Handling",
+      "to": "Anonymous User Session",
+      "relationType": "correctly manages"
+    },
+    {
+      "type": "relation",
+      "from": "Debug Panel",
+      "to": "SessionLogger Implementation",
+      "relationType": "visualizes"
+    },
+    {
+      "type": "relation",
+      "from": "Debug Panel",
+      "to": "Inadequate Error Recovery",
+      "relationType": "addresses"
+    },
+    {
+      "type": "relation",
+      "from": "SessionLogger Implementation",
+      "to": "Enhanced Session Context Management",
+      "relationType": "supports"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced Session Context Management",
+      "to": "Improved Tab Visibility Handling",
+      "relationType": "enables"
+    },
+    {
+      "type": "relation",
+      "from": "theaibotler Website",
+      "to": "Comment System Files",
+      "relationType": "contains"
+    },
+    {
+      "type": "relation",
+      "from": "theaibotler Website",
+      "to": "Authentication Files",
+      "relationType": "contains"
+    },
+    {
+      "type": "relation",
+      "from": "theaibotler Website",
+      "to": "406 Error Issue",
+      "relationType": "experienced"
+    },
+    {
+      "type": "relation",
+      "from": "Solution Implementation",
+      "to": "406 Error Issue",
+      "relationType": "resolves"
+    },
+    {
+      "type": "relation",
+      "from": "Solution Implementation",
+      "to": "theaibotler Website",
+      "relationType": "modifies"
+    },
+    {
+      "type": "relation",
+      "from": "Solution Implementation",
+      "to": "SessionLogger Implementation",
+      "relationType": "includes"
+    },
+    {
+      "type": "relation",
+      "from": "Solution Implementation",
+      "to": "Enhanced Session Context Management",
+      "relationType": "includes"
+    },
+    {
+      "type": "relation",
+      "from": "Solution Implementation",
+      "to": "Improved Tab Visibility Handling",
+      "relationType": "includes"
+    },
+    {
+      "type": "relation",
+      "from": "Solution Implementation",
+      "to": "Debug Panel",
+      "relationType": "includes"
+    },
+    {
+      "type": "relation",
+      "from": "Comment System Files",
+      "to": "Anonymous User Session",
+      "relationType": "uses"
+    },
+    {
+      "type": "relation",
+      "from": "Authentication Files",
+      "to": "Authenticated User Session",
+      "relationType": "manages"
+    },
+    {
+      "type": "relation",
+      "from": "Authentication Files",
+      "to": "Tab Visibility Handling",
+      "relationType": "implements"
+    },
+    {
+      "type": "relation",
+      "from": "Comment System Files",
+      "to": "Session Context Handling",
+      "relationType": "depends on"
+    },
+    {
+      "type": "relation",
+      "from": "Supabase RPC",
+      "to": "406 Error Issue",
+      "relationType": "source of"
+    },
+    {
+      "type": "relation",
+      "from": "Session Context Handling",
+      "to": "Supabase RPC",
+      "relationType": "uses"
+    },
+    {
+      "type": "relation",
+      "from": "Anonymous User Session",
+      "to": "Local Storage",
+      "relationType": "uses"
+    },
+    {
+      "type": "relation",
+      "from": "Tab Visibility Handling",
+      "to": "Tab Visibility API",
+      "relationType": "uses"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced Session Context Management",
+      "to": "Local Storage",
+      "relationType": "leverages"
+    },
+    {
+      "type": "relation",
+      "from": "SessionLogger Implementation",
+      "to": "Local Storage",
+      "relationType": "uses for persistence"
+    },
+    {
+      "type": "relation",
+      "from": "Improved Tab Visibility Handling",
+      "to": "Tab Visibility API",
+      "relationType": "enhances usage of"
+    },
+    {
+      "type": "relation",
+      "from": "src/app/utils/sessionLogger.ts",
+      "to": "SessionLogger Implementation",
+      "relationType": "implements"
+    },
+    {
+      "type": "relation",
+      "from": "src/components/SessionDebugPanel.tsx",
+      "to": "Debug Panel",
+      "relationType": "implements"
+    },
+    {
+      "type": "relation",
+      "from": "Original setSessionContext Function",
+      "to": "Session Context Conflict",
+      "relationType": "contributes to"
+    },
+    {
+      "type": "relation",
+      "from": "Original setSessionContext Function",
+      "to": "Race Conditions",
+      "relationType": "allows"
+    },
+    {
+      "type": "relation",
+      "from": "Original setSessionContext Function",
+      "to": "Inadequate Error Recovery",
+      "relationType": "exemplifies"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced setSessionContext Function",
+      "to": "Original setSessionContext Function",
+      "relationType": "replaces"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced setSessionContext Function",
+      "to": "Session Context Conflict",
+      "relationType": "resolves"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced setSessionContext Function",
+      "to": "Race Conditions",
+      "relationType": "prevents"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced setSessionContext Function",
+      "to": "Enhanced Session Context Management",
+      "relationType": "key component of"
+    },
+    {
+      "type": "relation",
+      "from": "Solution Implementation",
+      "to": "src/app/utils/sessionLogger.ts",
+      "relationType": "created"
+    },
+    {
+      "type": "relation",
+      "from": "Solution Implementation",
+      "to": "src/components/SessionDebugPanel.tsx",
+      "relationType": "created"
+    },
+    {
+      "type": "relation",
+      "from": "Solution Implementation",
+      "to": "Enhanced setSessionContext Function",
+      "relationType": "developed"
+    },
+    {
+      "type": "relation",
+      "from": "Tab Switching Authentication Issue",
+      "to": "Tab Visibility Handling",
+      "relationType": "caused by"
+    },
+    {
+      "type": "relation",
+      "from": "Robust Auth State Management",
+      "to": "Tab Switching Authentication Issue",
+      "relationType": "resolves"
+    },
+    {
+      "type": "relation",
+      "from": "Simplified Tab Visibility Handler",
+      "to": "Tab Switching Authentication Issue",
+      "relationType": "addresses"
+    },
+    {
+      "type": "relation",
+      "from": "Authenticated State Recovery",
+      "to": "Tab Switching Authentication Issue",
+      "relationType": "provides fallback for"
+    },
+    {
+      "type": "relation",
+      "from": "src/services/sessionService.ts",
+      "to": "Anonymous User Session",
+      "relationType": "manages"
+    },
+    {
+      "type": "relation",
+      "from": "AuthStatus Enum",
+      "to": "Robust Auth State Management",
+      "relationType": "enables"
+    },
+    {
+      "type": "relation",
+      "from": "useAuth Hook",
+      "to": "Authentication Files",
+      "relationType": "part of"
+    },
+    {
+      "type": "relation",
+      "from": "Session Expiration",
+      "to": "Anonymous User Session",
+      "relationType": "improves"
+    },
+    {
+      "type": "relation",
+      "from": "Tab Switching Authentication Issue",
+      "to": "Authenticated User Session",
+      "relationType": "disrupts"
+    },
+    {
+      "type": "relation",
+      "from": "Robust Auth State Management",
+      "to": "AuthStatus Enum",
+      "relationType": "implements"
+    },
+    {
+      "type": "relation",
+      "from": "Robust Auth State Management",
+      "to": "src/app/context/AuthContext.tsx",
+      "relationType": "enhances"
+    },
+    {
+      "type": "relation",
+      "from": "Simplified Tab Visibility Handler",
+      "to": "Tab Visibility API",
+      "relationType": "uses more reliably"
+    },
+    {
+      "type": "relation",
+      "from": "Authenticated State Recovery",
+      "to": "useAuth Hook",
+      "relationType": "extends"
+    },
+    {
+      "type": "relation",
+      "from": "src/services/sessionService.ts",
+      "to": "SessionService Implementation",
+      "relationType": "implements"
+    },
+    {
+      "type": "relation",
+      "from": "Local Storage",
+      "to": "Session Expiration",
+      "relationType": "stores"
+    },
+    {
+      "type": "relation",
+      "from": "Solution Implementation",
+      "to": "Robust Auth State Management",
+      "relationType": "includes"
+    },
+    {
+      "type": "relation",
+      "from": "Solution Implementation",
+      "to": "Simplified Tab Visibility Handler",
+      "relationType": "includes"
+    },
+    {
+      "type": "relation",
+      "from": "Solution Implementation",
+      "to": "Authenticated State Recovery",
+      "relationType": "includes"
+    },
+    {
+      "type": "relation",
+      "from": "Session Expiration",
+      "to": "Robust Auth State Management",
+      "relationType": "complements"
+    },
+    {
+      "type": "relation",
+      "from": "SessionService Implementation",
+      "to": "Anonymous User Session",
+      "relationType": "manages"
+    },
+    {
+      "type": "relation",
+      "from": "SessionService Implementation",
+      "to": "Authenticated User Session",
+      "relationType": "coordinates with"
+    },
+    {
+      "type": "relation",
+      "from": "SessionService Implementation",
+      "to": "Local Storage",
+      "relationType": "uses"
+    },
+    {
+      "type": "relation",
+      "from": "Robust Auth State Management",
+      "to": "SessionService Implementation",
+      "relationType": "depends on"
+    },
+    {
+      "type": "relation",
+      "from": "TypeScript Type Safety Improvements",
+      "to": "TypeScript Type Errors",
+      "relationType": "resolves"
+    },
+    {
+      "type": "relation",
+      "from": "ESLint Warning Resolutions",
+      "to": "ESLint Unused Variable Warnings",
+      "relationType": "resolves"
+    },
+    {
+      "type": "relation",
+      "from": "React Hook Dependency Fixes",
+      "to": "React Hook Dependency Warnings",
+      "relationType": "resolves"
+    },
+    {
+      "type": "relation",
+      "from": "Service Worker Caching Strategy",
+      "to": "Service Worker Cache Error",
+      "relationType": "resolves"
+    },
+    {
+      "type": "relation",
+      "from": "Modified SessionLogger",
+      "to": "src/app/utils/sessionLogger.ts",
+      "relationType": "modifies"
+    },
+    {
+      "type": "relation",
+      "from": "VoteType Definition",
+      "to": "TypeScript Type Errors",
+      "relationType": "fixes specific"
+    },
+    {
+      "type": "relation",
+      "from": "TypeScript Type Errors",
+      "to": "Compilation Errors",
+      "relationType": "part of"
+    },
+    {
+      "type": "relation",
+      "from": "ESLint Unused Variable Warnings",
+      "to": "Compilation Errors",
+      "relationType": "part of"
+    },
+    {
+      "type": "relation",
+      "from": "React Hook Dependency Warnings",
+      "to": "Compilation Errors",
+      "relationType": "part of"
+    },
+    {
+      "type": "relation",
+      "from": "Service Worker Cache Error",
+      "to": "theaibotler Website",
+      "relationType": "affects"
+    },
+    {
+      "type": "relation",
+      "from": "TypeScript Type Safety Improvements",
+      "to": "Modified SessionLogger",
+      "relationType": "enables"
+    },
+    {
+      "type": "relation",
+      "from": "TypeScript Type Safety Improvements",
+      "to": "VoteType Definition",
+      "relationType": "includes"
+    },
+    {
+      "type": "relation",
+      "from": "Modified SessionLogger",
+      "to": "SessionLogger Implementation",
+      "relationType": "enhances"
+    },
+    {
+      "type": "relation",
+      "from": "Compilation Errors",
+      "to": "theaibotler Website",
+      "relationType": "blocks deployment of"
+    },
+    {
+      "type": "relation",
+      "from": "public/sw.js",
+      "to": "Service Worker Caching Strategy",
+      "relationType": "implements"
+    },
+    {
+      "type": "relation",
+      "from": "VoteType Definition",
+      "to": "Comment System Files",
+      "relationType": "supports"
+    },
+    {
+      "type": "relation",
+      "from": "TypeScript Type Safety Improvements",
+      "to": "theaibotler Website",
+      "relationType": "improves code quality of"
+    },
+    {
+      "type": "relation",
+      "from": "ESLint Warning Resolutions",
+      "to": "theaibotler Website",
+      "relationType": "improves code quality of"
+    },
+    {
+      "type": "relation",
+      "from": "React Hook Dependency Fixes",
+      "to": "theaibotler Website",
+      "relationType": "improves performance of"
+    },
+    {
+      "type": "relation",
+      "from": "Modified SessionLogger",
+      "to": "TypeScript Type Errors",
+      "relationType": "addresses"
+    },
+    {
+      "type": "relation",
+      "from": "Service Worker Caching Strategy",
+      "to": "theaibotler Website",
+      "relationType": "improves performance of"
+    },
+    {
+      "type": "relation",
+      "from": "recoverFromSessionError Function",
+      "to": "SessionLogger Implementation",
+      "relationType": "supports"
+    },
+    {
+      "type": "relation",
+      "from": "recoverFromSessionError Function",
+      "to": "Inadequate Error Recovery",
+      "relationType": "addresses"
+    },
+    {
+      "type": "relation",
+      "from": "recoverFromSessionError Function",
+      "to": "src/app/utils/supabase/client.ts",
+      "relationType": "added to"
+    },
+    {
+      "type": "relation",
+      "from": "recoverFromSessionError Function",
+      "to": "Tab Switching Authentication Issue",
+      "relationType": "helps resolve"
+    },
+    {
+      "type": "relation",
+      "from": "Compilation and Runtime Bug Fixes",
+      "to": "TypeScript Type Safety Improvements",
+      "relationType": "includes"
+    },
+    {
+      "type": "relation",
+      "from": "Compilation and Runtime Bug Fixes",
+      "to": "ESLint Warning Resolutions",
+      "relationType": "includes"
+    },
+    {
+      "type": "relation",
+      "from": "Compilation and Runtime Bug Fixes",
+      "to": "React Hook Dependency Fixes",
+      "relationType": "includes"
+    },
+    {
+      "type": "relation",
+      "from": "Compilation and Runtime Bug Fixes",
+      "to": "Service Worker Caching Strategy",
+      "relationType": "includes"
+    },
+    {
+      "type": "relation",
+      "from": "Compilation and Runtime Bug Fixes",
+      "to": "recoverFromSessionError Function",
+      "relationType": "includes"
+    },
+    {
+      "type": "relation",
+      "from": "Compilation and Runtime Bug Fixes",
+      "to": "theaibotler Website",
+      "relationType": "enhances"
+    },
+    {
+      "type": "relation",
+      "from": "Compilation and Runtime Bug Fixes",
+      "to": "Compilation Errors",
+      "relationType": "resolves"
+    },
+    {
+      "type": "relation",
+      "from": "Solution Implementation",
+      "to": "Compilation and Runtime Bug Fixes",
+      "relationType": "extended by"
+    },
+    {
+      "type": "relation",
+      "from": "Author Status Persistence Issue",
+      "to": "Authenticated User Session",
+      "relationType": "affects"
+    },
+    {
+      "type": "relation",
+      "from": "Author Status Persistence Issue",
+      "to": "Tab Visibility Handling",
+      "relationType": "affects"
+    },
+    {
+      "type": "relation",
+      "from": "Author Status Persistence Issue",
+      "to": "Tab Switching Authentication Issue",
+      "relationType": "related to"
+    },
+    {
+      "type": "relation",
+      "from": "Author Status Caching",
+      "to": "Author Status Persistence Issue",
+      "relationType": "resolves"
+    },
+    {
+      "type": "relation",
+      "from": "Author Status Caching",
+      "to": "Local Storage",
+      "relationType": "uses"
+    },
+    {
+      "type": "relation",
+      "from": "Author Status Caching",
+      "to": "Authenticated User Session",
+      "relationType": "enhances"
+    },
+    {
+      "type": "relation",
+      "from": "Author Status Caching",
+      "to": "src/app/utils/supabase/client.ts",
+      "relationType": "implemented in"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced Sign-out Mechanism",
+      "to": "Author Status Persistence Issue",
+      "relationType": "resolves"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced Sign-out Mechanism",
+      "to": "Authenticated User Session",
+      "relationType": "improves"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced Sign-out Mechanism",
+      "to": "src/app/context/AuthContext.tsx",
+      "relationType": "implemented in"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced Sign-out Mechanism",
+      "to": "src/components/AuthorLogin.tsx",
+      "relationType": "enhanced in"
+    },
+    {
+      "type": "relation",
+      "from": "Cross-Tab Authentication Improvement",
+      "to": "Author Status Caching",
+      "relationType": "includes"
+    },
+    {
+      "type": "relation",
+      "from": "Cross-Tab Authentication Improvement",
+      "to": "Enhanced Sign-out Mechanism",
+      "relationType": "includes"
+    },
+    {
+      "type": "relation",
+      "from": "Cross-Tab Authentication Improvement",
+      "to": "Author Status Persistence Issue",
+      "relationType": "resolves"
+    },
+    {
+      "type": "relation",
+      "from": "Cross-Tab Authentication Improvement",
+      "to": "theaibotler Website",
+      "relationType": "improves"
+    },
+    {
+      "type": "relation",
+      "from": "SessionContext RLS Requirements",
+      "to": "Comment Deletion Issues",
+      "relationType": "causes"
+    },
+    {
+      "type": "relation",
+      "from": "Modular Comment Operations",
+      "to": "Enhanced Comment Deletion Logic",
+      "relationType": "implements"
+    },
+    {
+      "type": "relation",
+      "from": "SessionContext RLS Requirements",
+      "to": "Anonymous User Session",
+      "relationType": "restricts operations of"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced Comment Deletion Logic",
+      "to": "Comment Deletion Issues",
+      "relationType": "resolves"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced setSessionContext Function",
+      "to": "SessionContext RLS Requirements",
+      "relationType": "addresses"
+    },
+    {
+      "type": "relation",
+      "from": "Modular Comment Operations",
+      "to": "CommentsContainer.tsx",
+      "relationType": "added to"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced Comment Deletion",
+      "to": "Modular Comment Operations",
+      "relationType": "utilizes"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced Comment Deletion",
+      "to": "Comment System Files",
+      "relationType": "enhances"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced Comment Deletion Logic",
+      "to": "Modular Comment Operations",
+      "relationType": "based on"
+    },
+    {
+      "type": "relation",
+      "from": "Comment Deletion Issues",
+      "to": "Comment System Files",
+      "relationType": "affects"
+    },
+    {
+      "type": "relation",
+      "from": "Solution Implementation",
+      "to": "Enhanced Comment Deletion Logic",
+      "relationType": "includes"
+    },
+    {
+      "type": "relation",
+      "from": "SessionContext RLS Requirements",
+      "to": "Supabase RPC",
+      "relationType": "depends on"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced Comment Deletion Logic",
+      "to": "Recursive Comment Thread Cleanup",
+      "relationType": "implements"
+    },
+    {
+      "type": "relation",
+      "from": "Comment State Classification",
+      "to": "Modular Comment Operations",
+      "relationType": "part of"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced Comment Deletion",
+      "to": "Comment State Classification",
+      "relationType": "utilizes"
+    },
+    {
+      "type": "relation",
+      "from": "Recursive Comment Thread Cleanup",
+      "to": "Comment Deletion Issues",
+      "relationType": "addresses"
+    },
+    {
+      "type": "relation",
+      "from": "Comment State Classification",
+      "to": "Enhanced Comment Deletion Logic",
+      "relationType": "enables"
+    },
+    {
+      "type": "relation",
+      "from": "Anonymous Voting Issue",
+      "to": "406 Error Issue",
+      "relationType": "emerged after fixing"
+    },
+    {
+      "type": "relation",
+      "from": "Anonymous Voting Issue",
+      "to": "Enhanced Session Context Management",
+      "relationType": "caused by side effect of"
+    },
+    {
+      "type": "relation",
+      "from": "Anonymous Voting Issue",
+      "to": "Comment System Files",
+      "relationType": "affects"
+    },
+    {
+      "type": "relation",
+      "from": "Anonymous Voting Issue",
+      "to": "Anonymous User Session",
+      "relationType": "affects"
+    },
+    {
+      "type": "relation",
+      "from": "Anonymous Voting Issue",
+      "to": "VoteManager",
+      "relationType": "occurs in"
+    },
+    {
+      "type": "relation",
+      "from": "Missing Session Context for Anonymous Voting",
+      "to": "Anonymous Voting Issue",
+      "relationType": "causes"
+    },
+    {
+      "type": "relation",
+      "from": "Missing Session Context for Anonymous Voting",
+      "to": "Session Context Conflict",
+      "relationType": "similar to"
+    },
+    {
+      "type": "relation",
+      "from": "Missing Session Context for Anonymous Voting",
+      "to": "Enhanced Session Context Management",
+      "relationType": "unintended side effect of"
+    },
+    {
+      "type": "relation",
+      "from": "Missing Session Context for Anonymous Voting",
+      "to": "VoteManager",
+      "relationType": "manifests in"
+    },
+    {
+      "type": "relation",
+      "from": "Missing Session Context for Anonymous Voting",
+      "to": "SessionContext RLS Requirements",
+      "relationType": "violates"
+    },
+    {
+      "type": "relation",
+      "from": "Session Context for Anonymous Voting",
+      "to": "Anonymous Voting Issue",
+      "relationType": "resolves"
+    },
+    {
+      "type": "relation",
+      "from": "Session Context for Anonymous Voting",
+      "to": "Missing Session Context for Anonymous Voting",
+      "relationType": "addresses"
+    },
+    {
+      "type": "relation",
+      "from": "Session Context for Anonymous Voting",
+      "to": "Enhanced Session Context Management",
+      "relationType": "extends"
+    },
+    {
+      "type": "relation",
+      "from": "Session Context for Anonymous Voting",
+      "to": "setSessionContext",
+      "relationType": "utilizes"
+    },
+    {
+      "type": "relation",
+      "from": "Session Context for Anonymous Voting",
+      "to": "Anonymous User Session",
+      "relationType": "enhances"
+    },
+    {
+      "type": "relation",
+      "from": "Session Context for Anonymous Voting",
+      "to": "SessionContext RLS Requirements",
+      "relationType": "complies with"
+    },
+    {
+      "type": "relation",
+      "from": "VoteManager Session Context Fix",
+      "to": "VoteManager",
+      "relationType": "modifies"
+    },
+    {
+      "type": "relation",
+      "from": "VoteManager Session Context Fix",
+      "to": "Session Context for Anonymous Voting",
+      "relationType": "implements"
+    },
+    {
+      "type": "relation",
+      "from": "VoteManager Session Context Fix",
+      "to": "Solution Implementation",
+      "relationType": "part of"
+    },
+    {
+      "type": "relation",
+      "from": "Enhanced Comment Deletion Logic",
+      "to": "Session Context for Anonymous Voting",
+      "relationType": "uses similar pattern as"
+    },
+    {
+      "type": "relation",
+      "from": "theaibotler Website",
+      "to": "Anonymous Voting Issue",
+      "relationType": "experienced"
+    },
+    {
+      "type": "relation",
+      "from": "CommentVoting.tsx",
+      "to": "VoteManager",
+      "relationType": "uses"
+    },
+    {
+      "type": "relation",
+      "from": "Comment System Files",
+      "to": "CommentVoting.tsx",
+      "relationType": "includes"
+    },
+    {
+      "type": "relation",
+      "from": "VoteManager Session Context Fix",
+      "to": "Anonymous Voting Issue",
+      "relationType": "resolves"
+    }
+  ]
+}
