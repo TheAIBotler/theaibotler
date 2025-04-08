@@ -64,6 +64,13 @@ class VoteManager {
         return userVotes[storageKey];
       }
       
+      // For anonymous users, set session context before operations
+      if (!isAuthenticated) {
+        // Import dynamically to avoid circular dependencies
+        const { setSessionContext } = await import('@/app/utils/supabase/client');
+        await setSessionContext(sessionId);
+      }
+      
       // No cached vote, query from Supabase
       const { data, error } = await supabase
         .from('comment_votes')
@@ -165,6 +172,14 @@ class VoteManager {
       userVotes[storageKey] = voteType;
       this.saveUserVotesToStorage(userVotes);
 
+      // For anonymous users, set session context before operations
+      if (!isAuthenticated) {
+        // Import dynamically to avoid circular dependencies
+        const { setSessionContext } = await import('@/app/utils/supabase/client');
+        await setSessionContext(sessionId);
+        console.log('Set session context for anonymous user');
+      }
+
       // Remove existing vote first
       const { error: removeError } = await supabase
         .from('comment_votes')
@@ -209,6 +224,14 @@ class VoteManager {
       const userVotes = this.getUserVotesFromStorage();
       userVotes[storageKey] = null;
       this.saveUserVotesToStorage(userVotes);
+
+      // For anonymous users, set session context before operations
+      if (!isAuthenticated) {
+        // Import dynamically to avoid circular dependencies
+        const { setSessionContext } = await import('@/app/utils/supabase/client');
+        await setSessionContext(sessionId);
+        console.log('Set session context for anonymous user');
+      }
 
       // Remove vote
       const { error } = await supabase
